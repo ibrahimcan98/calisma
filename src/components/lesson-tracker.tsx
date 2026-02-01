@@ -5,7 +5,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, doc, serverTimestamp, query, where, limit } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Student, LessonLog, BalanceLog } from '@/lib/types';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { LinkIcon, Plus, Trash2, Users, Wallet, TrendingUp, BookUser, Activity } from 'lucide-react';
@@ -81,6 +81,7 @@ export function LessonTracker() {
   }, [rawLessonLogs]);
 
   const { totalEarnings, logsByWeek, sortedWeeks } = useMemo(() => {
+    if (!isMounted) return { totalEarnings: 0, logsByWeek: {}, sortedWeeks: [] };
     const totalEarnings = lessonLogs.reduce((sum, log) => sum + log.lessonPrice, 0);
 
     const logsByWeek = lessonLogs.reduce<Record<string, { lessons: LessonLog[], totalEarnings: number, startDate: Date }>>((acc, log) => {
@@ -102,7 +103,7 @@ export function LessonTracker() {
     const sortedWeeks = Object.keys(logsByWeek).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
     return { totalEarnings, logsByWeek, sortedWeeks };
-  }, [lessonLogs]);
+  }, [lessonLogs, isMounted]);
 
   const weeklyEarnings = useMemo(() => {
     if (!isMounted) return 0;
@@ -360,7 +361,6 @@ export function LessonTracker() {
                                       target="_blank" 
                                       rel="noopener noreferrer" 
                                       aria-label={`${student.name} rapor sayfasını aç`}
-                                      onClick={(e) => e.stopPropagation()}
                                     >
                                       <LinkIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
                                     </Link>
@@ -375,13 +375,14 @@ export function LessonTracker() {
                               {getRemainingLessonsText(student)}
                           </p>
                       </div>
-                      <div className="hidden lg:flex flex-1 flex-row gap-2 items-center" onClick={(e) => e.stopPropagation()}>
-                          <div
-                            className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto cursor-pointer")}
+                      <div className="hidden lg:flex flex-1 flex-row gap-2 items-center">
+                          <Button
+                            variant="outline"
+                            className="w-full sm:w-auto"
                             onClick={() => handleLessonDone(student)}
                           >
                             Dersi İşle
-                          </div>
+                          </Button>
                           <div className="flex w-full sm:w-auto gap-2">
                               <Input
                                   type="number"
@@ -391,20 +392,20 @@ export function LessonTracker() {
                                   onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
                                   onKeyDown={(e) => e.key === 'Enter' && handleAddFunds(student)}
                               />
-                              <div
-                                className={cn(buttonVariants(), "w-full sm:w-auto cursor-pointer")}
-                                onClick={() => handleAddFunds(student)}
+                              <Button
+                                  className="w-full sm:w-auto"
+                                  onClick={() => handleAddFunds(student)}
                               >
                                 Ders Ekle
-                              </div>
+                              </Button>
                           </div>
                       </div>
-                      <div className="flex-none ml-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex-none ml-2">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                               <div className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'cursor-pointer')}>
+                               <Button variant="ghost" size="icon">
                                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                               </div>
+                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
@@ -422,7 +423,7 @@ export function LessonTracker() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      <div className="p-4 flex flex-col lg:hidden gap-4 border-b" onClick={(e) => e.stopPropagation()}>
+                      <div className="p-4 flex flex-col lg:hidden gap-4 border-b">
                           <Button variant="outline" className="w-full" onClick={() => handleLessonDone(student)}>Dersi İşle</Button>
                           <div className="flex w-full gap-2">
                               <Input
@@ -496,3 +497,4 @@ export function LessonTracker() {
       </Card>
     </div>
   );
+}
