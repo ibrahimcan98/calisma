@@ -38,7 +38,7 @@ import {
 import { CalendarIcon, Circle, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import { tr } from 'date-fns/locale/tr';
 import { Textarea } from '@/components/ui/textarea';
 import type { Category, Transaction } from '@/lib/types';
 import { useState } from 'react';
