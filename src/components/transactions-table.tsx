@@ -1,0 +1,95 @@
+'use client';
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import type { Category, Transaction } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+
+type TransactionsTableProps = {
+  transactions: Transaction[];
+  categories: Category[];
+};
+
+export function TransactionsTable({ transactions, categories }: TransactionsTableProps) {
+  const categoryMap = new Map(categories.map(c => [c.value, c]));
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
+
+  return (
+    <div className="w-full overflow-hidden rounded-lg border shadow-sm">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[200px] hidden md:table-cell">Category</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead className="text-right">Amount</TableHead>
+            <TableHead className="text-right hidden sm:table-cell">Date</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {transactions.length > 0 ? (
+            transactions.map((transaction) => {
+              const category = categoryMap.get(transaction.category);
+              const Icon = category?.icon;
+
+              return (
+                <TableRow key={transaction.id}>
+                  <TableCell className="hidden md:table-cell">
+                    <div className="flex items-center gap-2">
+                      {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
+                      <span className="font-medium">{category?.label ?? transaction.category}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-start md:items-center gap-3">
+                        {Icon && <Icon className="h-8 w-8 text-muted-foreground md:hidden flex-shrink-0 mt-1" />}
+                        <div>
+                            <p className="font-medium text-foreground">{transaction.description}</p>
+                            <p className="text-sm text-muted-foreground md:hidden">
+                                {category?.label ?? transaction.category}
+                            </p>
+                        </div>
+                    </div>
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      'text-right font-semibold',
+                      transaction.type === 'Income'
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    )}
+                  >
+                    {transaction.type === 'Income' ? '+' : '-'}
+                    {formatCurrency(transaction.amount)}
+                  </TableCell>
+                  <TableCell className="text-right hidden sm:table-cell">
+                    {format(transaction.date, 'MMM d, yyyy')}
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          ) : (
+            <TableRow>
+              <TableCell colSpan={4} className="h-24 text-center">
+                No transactions for this period.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
