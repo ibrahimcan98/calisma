@@ -9,6 +9,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card';
 import {
   ArrowDownCircle,
@@ -32,11 +33,13 @@ import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/no
 import { startOfMonth, subMonths, differenceInCalendarMonths } from 'date-fns';
 import { SavingsGoals } from './savings-goals';
 import { SubscriptionsPanel } from './subscriptions-panel';
+import { useToast } from '@/hooks/use-toast';
 
 
 export function Dashboard() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [categories, setCategories] =
     useState<Category[]>(initialCategories);
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
@@ -118,6 +121,15 @@ export function Dashboard() {
     };
   }, [transactions]);
   
+  const hasCarryOverForCurrentMonth = useMemo(() => {
+    const now = new Date();
+    const startOfCurrentMonth = startOfMonth(now);
+    return transactions.some(t => 
+        t.description === 'Geçen aydan devir' && 
+        t.date >= startOfCurrentMonth
+    );
+  }, [transactions]);
+
   const handleAddTransaction = (transaction: Omit<Transaction, 'id'>) => {
     if (!transactionsCollectionRef) return;
     addDocumentNonBlocking(transactionsCollectionRef, { ...transaction, date: transaction.date });
@@ -140,6 +152,44 @@ export function Dashboard() {
       style: 'currency',
       currency: 'TRY',
     }).format(amount);
+  };
+
+  const handleCarryOver = () => {
+    if (!transactionsCollectionRef || !user) return;
+
+    if (stats.lastMonthSavings <= 0) {
+      toast({
+        variant: "destructive",
+        title: "İşlem Başarısız",
+        description: "Yalnızca pozitif tutarlar gelire eklenebilir.",
+      });
+      return;
+    }
+
+    if (hasCarryOverForCurrentMonth) {
+        toast({
+            variant: 'default',
+            title: 'Bilgi',
+            description: 'Geçen aydan kalan tutar bu ay için zaten gelire eklenmiş.',
+        });
+        return;
+    }
+
+    const carryOverTransaction = {
+      type: 'Income' as 'Income',
+      amount: stats.lastMonthSavings,
+      date: new Date(),
+      category: 'other',
+      description: 'Geçen aydan devir',
+      userId: user.uid,
+    };
+    
+    addDocumentNonBlocking(transactionsCollectionRef, carryOverTransaction);
+
+    toast({
+      title: "Başarılı!",
+      description: `${formatCurrency(stats.lastMonthSavings)} tutarı gelirinize eklendi.`,
+    });
   };
 
   return (
@@ -246,6 +296,13 @@ export function Dashboard() {
                 Geçen ayki gelir - gider farkı
               </p>
             </CardContent>
+            {stats.lastMonthSavings > 0 && !hasCarryOverForCurrentMonth && (
+              <CardFooter>
+                  <Button className="w-full" onClick={handleCarryOver}>
+                      <Plus className="mr-2 h-4 w-4" /> Gelire Ekle
+                  </Button>
+              </CardFooter>
+            )}
           </Card>
         </div>
         
