@@ -17,9 +17,11 @@ export async function getSpendingAnalysis(transactions: Transaction[]) {
   const analysisInput: SpendingAnalysisInput = {
     transactionsJson: JSON.stringify(transactions.map((t) => ({
       date: t.date.toISOString().split('T')[0], // Format as YYYY-MM-DD
+      type: t.type,
       category: t.category,
       subCategory: t.subCategory,
       amount: t.amount,
+      description: t.description,
     }))),
   };
 

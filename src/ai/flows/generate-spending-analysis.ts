@@ -33,7 +33,9 @@ const prompt = ai.definePrompt({
   name: 'spendingAnalysisPrompt',
   input: {schema: SpendingAnalysisInputSchema},
   output: {schema: SpendingAnalysisOutputSchema},
-  prompt: `You are a personal finance advisor. Analyze the following spending data, provided as a JSON string, and provide a detailed analysis of spending patterns by category over time. Also, provide specific, actionable suggestions for improving spending habits.
+  prompt: `You are a personal finance advisor. Analyze the following spending data, provided as a JSON string. The JSON contains an array of transaction objects. Each object has the following fields: 'date', 'type' ('Income' or 'Expense'), 'category', 'subCategory' (optional), 'amount', and 'description'.
+
+Based on this data, provide a detailed analysis of spending patterns by category over time. Focus on the 'Expense' types. Also, provide specific, actionable suggestions for improving spending habits.
 
 Spending Data:
 {{{transactionsJson}}}`,
