@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, serverTimestamp, query, where, limit } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -8,7 +8,7 @@ import type { Student, LessonLog, BalanceLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Link as LinkIcon, Plus, Trash2, Users, Wallet, TrendingUp, BookUser, Activity } from 'lucide-react';
+import { LinkIcon, Plus, Trash2, Users, Wallet, TrendingUp, BookUser, Activity } from 'lucide-react';
 import Link from 'next/link';
 import {
   AlertDialog,
@@ -45,6 +45,11 @@ export function LessonTracker() {
   const [newStudentLessonPrice, setNewStudentLessonPrice] = useState('');
   const [newStudentBalance, setNewStudentBalance] = useState('');
   const [fundsToAdd, setFundsToAdd] = useState<Record<string, string>>({});
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const studentsCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -58,32 +63,6 @@ export function LessonTracker() {
 
   const { data: rawStudents, isLoading: isStudentsLoading } = useCollection<Omit<Student, 'id'>>(studentsCollectionRef);
   const { data: rawLessonLogs } = useCollection<Omit<LessonLog, 'id'>>(lessonLogsCollectionRef);
-
-  // This feature is temporarily disabled to prevent a persistent app crash
-  // caused by a CollectionGroup query issue. A more robust solution will be implemented.
-  /*
-  const allBalanceLogsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-        collectionGroup(firestore, 'balanceLogs'), 
-        where('userId', '==', user.uid),
-        limit(15)
-    );
-  }, [firestore, user]);
-
-  const { data: rawAllBalanceLogs, isLoading: areAllLogsLoading } = useCollection<Omit<BalanceLog, 'id'>>(allBalanceLogsQuery);
-
-  const allBalanceLogs = useMemo(() => {
-    if (!rawAllBalanceLogs) return [];
-    const logsWithDates = rawAllBalanceLogs.map(l => ({
-      ...l,
-      date: (l.date as any)?.toDate() ?? new Date(),
-    }));
-    // Sort on the client side
-    return logsWithDates.sort((a, b) => b.date.getTime() - a.date.getTime());
-  }, [rawAllBalanceLogs]);
-  */
-
 
   const students = useMemo(() => {
     if (!rawStudents) return [];
@@ -101,10 +80,7 @@ export function LessonTracker() {
     })).sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [rawLessonLogs]);
 
-  const weeklyStats = useMemo(() => {
-    const now = new Date();
-    const currentWeekLogs = lessonLogs.filter(log => isSameWeek(log.date, now, { weekStartsOn: 1 }));
-    const weeklyEarnings = currentWeekLogs.reduce((sum, log) => sum + log.lessonPrice, 0);
+  const { totalEarnings, logsByWeek, sortedWeeks } = useMemo(() => {
     const totalEarnings = lessonLogs.reduce((sum, log) => sum + log.lessonPrice, 0);
 
     const logsByWeek = lessonLogs.reduce<Record<string, { lessons: LessonLog[], totalEarnings: number, startDate: Date }>>((acc, log) => {
@@ -125,8 +101,15 @@ export function LessonTracker() {
     
     const sortedWeeks = Object.keys(logsByWeek).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
-    return { weeklyEarnings, totalEarnings, logsByWeek, sortedWeeks };
+    return { totalEarnings, logsByWeek, sortedWeeks };
   }, [lessonLogs]);
+
+  const weeklyEarnings = useMemo(() => {
+    if (!isMounted) return 0;
+    const now = new Date();
+    const currentWeekLogs = lessonLogs.filter(log => isSameWeek(log.date, now, { weekStartsOn: 1 }));
+    return currentWeekLogs.reduce((sum, log) => sum + log.lessonPrice, 0);
+  }, [lessonLogs, isMounted]);
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('de-DE', {
@@ -299,7 +282,7 @@ export function LessonTracker() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(weeklyStats.weeklyEarnings)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(weeklyEarnings)}</div>
             <p className="text-xs text-muted-foreground">Bu hafta tamamlanan derslerin toplamı</p>
           </CardContent>
            <CardFooter>
@@ -328,7 +311,7 @@ export function LessonTracker() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(weeklyStats.totalEarnings)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalEarnings)}</div>
             <p className="text-xs text-muted-foreground">Tüm zamanların toplam ders geliri</p>
           </CardContent>
         </Card>
@@ -520,8 +503,8 @@ export function LessonTracker() {
         <CardContent>
             {lessonLogs.length > 0 ? (
                 <Accordion type="single" collapsible className="w-full">
-                    {weeklyStats.sortedWeeks.map(weekKey => {
-                        const weekData = weeklyStats.logsByWeek[weekKey];
+                    {sortedWeeks.map(weekKey => {
+                        const weekData = logsByWeek[weekKey];
                         const weekEnd = endOfWeek(weekData.startDate, { weekStartsOn: 1 });
                         const weekLabel = `${format(weekData.startDate, 'd MMM', { locale: tr })} - ${format(weekEnd, 'd MMM yyyy', { locale: tr })}`;
                         

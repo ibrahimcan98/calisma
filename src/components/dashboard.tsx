@@ -53,6 +53,11 @@ export function Dashboard() {
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
   const [editableLastMonthSavings, setEditableLastMonthSavings] = useState('0.00');
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const transactionsCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -76,7 +81,7 @@ export function Dashboard() {
   }, [transactions]);
 
   const stats = useMemo(() => {
-    if (transactions.length === 0) {
+    if (!isMounted || transactions.length === 0) {
       return {
         balance: 0,
         totalIncome: 0,
@@ -128,20 +133,23 @@ export function Dashboard() {
       averageMonthlyExpense,
       lastMonthSavings,
     };
-  }, [transactions]);
+  }, [transactions, isMounted]);
   
   useEffect(() => {
-    setEditableLastMonthSavings(stats.lastMonthSavings.toFixed(2));
-  }, [stats.lastMonthSavings]);
+    if (isMounted) {
+      setEditableLastMonthSavings(stats.lastMonthSavings.toFixed(2));
+    }
+  }, [stats.lastMonthSavings, isMounted]);
 
   const hasCarryOverForCurrentMonth = useMemo(() => {
+    if (!isMounted) return false;
     const now = new Date();
     const startOfCurrentMonth = startOfMonth(now);
     return transactions.some(t => 
         t.description === 'Geçen aydan devir' && 
         t.date >= startOfCurrentMonth
     );
-  }, [transactions]);
+  }, [transactions, isMounted]);
 
   const handleAddTransaction = (transaction: Omit<Transaction, 'id'>) => {
     if (!transactionsCollectionRef) return;

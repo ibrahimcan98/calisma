@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -30,6 +30,11 @@ type SubscriptionsPanelProps = {
 export function SubscriptionsPanel({ categories, formatCurrency }: SubscriptionsPanelProps) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
 
@@ -89,7 +94,7 @@ export function SubscriptionsPanel({ categories, formatCurrency }: Subscriptions
       {subscriptions.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {subscriptions.map((sub) => {
-            const nextPaymentDate = calculateNextPaymentDate(sub.startDate, sub.frequency);
+            const nextPaymentDate = isMounted ? calculateNextPaymentDate(sub.startDate, sub.frequency) : null;
             return (
               <Card key={sub.id} className="flex flex-col">
                 <CardHeader>
@@ -120,7 +125,11 @@ export function SubscriptionsPanel({ categories, formatCurrency }: Subscriptions
                 <CardContent className="space-y-4 flex-grow">
                     <div className="flex items-center text-sm text-muted-foreground">
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        <span>Sonraki ödeme: {format(nextPaymentDate, 'd MMMM yyyy')}</span>
+                        {isMounted && nextPaymentDate ? (
+                          <span>Sonraki ödeme: {format(nextPaymentDate, 'd MMMM yyyy')}</span>
+                        ) : (
+                          <span>Sonraki ödeme: Hesaplanıyor...</span>
+                        )}
                     </div>
                 </CardContent>
               </Card>
