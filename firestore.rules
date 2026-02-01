@@ -105,20 +105,20 @@ service cloud.firestore {
         // Tuba (the owner) can list her students and write to them.
         allow list, write: if isOwner(userId);
         
-        // Anyone signed-in can get a specific student's data for the public report page.
-        allow get: if isSignedIn();
+        // This is a public page, so anyone can get a specific student's data.
+        allow get: if true;
         
         match /balanceLogs/{balanceLogId} {
-           // Anyone signed-in can read the logs for a specific student on the public page.
-          allow get, list: if isSignedIn();
+           // This is a public page, so anyone can read the logs.
+          allow get, list: if true;
           // Only Tuba can create new balance logs.
           allow write: if isOwner(userId);
         }
       }
 
       match /lessonLogs/{lessonLogId} {
-        // Lesson logs also need to be read for the public student page.
-        allow get, list: if isSignedIn();
+        // This is for the public student page, so anyone can read the logs.
+        allow get, list: if true;
         allow write: if isOwner(userId);
       }
     }
