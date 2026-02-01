@@ -1,0 +1,176 @@
+'use client';
+
+import { useMemo } from 'react';
+import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, query, where } from 'firebase/firestore';
+import type { Student, LessonLog } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Loader2, User, BookCheck, BookX, CalendarDays, Hash } from 'lucide-react';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
+type StudentDetailPageProps = {
+  userId: string;
+  studentId: string;
+};
+
+export function StudentDetailPage({ userId, studentId }: StudentDetailPageProps) {
+  const firestore = useFirestore();
+
+  const studentDocRef = useMemoFirebase(() => {
+    return doc(firestore, 'users', userId, 'students', studentId);
+  }, [firestore, userId, studentId]);
+
+  const lessonLogsQuery = useMemoFirebase(() => {
+    const logsCollection = collection(firestore, 'users', userId, 'lessonLogs');
+    return query(logsCollection, where('studentId', '==', studentId));
+  }, [firestore, userId, studentId]);
+
+  const { data: student, isLoading: isStudentLoading, error: studentError } = useDoc<Student>(studentDocRef);
+  const { data: rawLessonLogs, isLoading: areLogsLoading, error: logsError } = useCollection<LessonLog>(lessonLogsQuery);
+
+  const lessonLogs = useMemo(() => {
+    if (!rawLessonLogs) return [];
+    return rawLessonLogs.map(l => ({
+      ...l,
+      date: (l.date as any)?.toDate() ?? new Date(),
+    })).sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [rawLessonLogs]);
+
+  const stats = useMemo(() => {
+    if (!student) {
+      return {
+        remainingLessons: 0,
+        totalLessonsPurchased: 0,
+        completedLessons: 0,
+        debtLessons: 0,
+        isDebt: false,
+      };
+    }
+    const completedLessons = lessonLogs?.length ?? 0;
+    const totalPaid = student.balance + (completedLessons * student.lessonPrice);
+    const totalLessonsPurchased = student.lessonPrice > 0 ? Math.round(totalPaid / student.lessonPrice) : 0;
+    
+    return {
+      remainingLessons: student.lessonPrice > 0 ? Math.floor(student.balance / student.lessonPrice) : 0,
+      debtLessons: student.lessonPrice > 0 ? Math.ceil(Math.abs(student.balance) / student.lessonPrice) : 0,
+      isDebt: student.balance < 0,
+      completedLessons: completedLessons,
+      totalLessonsPurchased: totalLessonsPurchased,
+    };
+  }, [student, lessonLogs]);
+
+
+  if (isStudentLoading || areLogsLoading) {
+    return (
+      <div className="flex h-64 w-full items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (studentError || logsError) {
+      return (
+          <div className="flex flex-col items-center justify-center h-64 text-destructive">
+              <p>Veri yüklenirken bir hata oluştu.</p>
+              <p className="text-xs text-muted-foreground">{studentError?.message || logsError?.message}</p>
+          </div>
+      )
+  }
+
+  if (!student) {
+    return (
+      <div className="flex h-64 w-full items-center justify-center">
+        <p>Öğrenci bulunamadı.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl w-full space-y-8">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-4">
+            <User className="h-10 w-10 text-primary" />
+            <div>
+              <CardTitle className="text-3xl">{student.name}</CardTitle>
+              <CardDescription>Ders ve Bakiye Durumu Raporu</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
+              <div className="p-4 bg-muted rounded-lg">
+                  <BookCheck className="mx-auto h-8 w-8 text-green-600 mb-2" />
+                  <p className="text-2xl font-bold">{stats.completedLessons}</p>
+                  <p className="text-sm text-muted-foreground">Tamamlanan Ders</p>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                  <Hash className="mx-auto h-8 w-8 text-blue-600 mb-2" />
+                  <p className="text-2xl font-bold">{stats.totalLessonsPurchased}</p>
+                  <p className="text-sm text-muted-foreground">Toplam Alınan Ders</p>
+              </div>
+              <div className="p-4 bg-muted rounded-lg col-span-2 md:col-span-1">
+                  {stats.isDebt ? (
+                      <>
+                        <BookX className="mx-auto h-8 w-8 text-red-600 mb-2" />
+                        <p className="text-2xl font-bold">{stats.debtLessons} Ders</p>
+                        <p className="text-sm text-muted-foreground">Borçlu</p>
+                      </>
+                  ) : (
+                      <>
+                        <CalendarDays className="mx-auto h-8 w-8 text-yellow-600 mb-2" />
+                        <p className="text-2xl font-bold">{stats.remainingLessons}</p>
+                        <p className="text-sm text-muted-foreground">Kalan Ders</p>
+                      </>
+                  )}
+              </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+          <CardHeader>
+              <CardTitle>Geçmiş Dersler</CardTitle>
+              <CardDescription>Tamamlanan tüm derslerin listesi.</CardDescription>
+          </CardHeader>
+          <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[100px]">#</TableHead>
+                    <TableHead>Tarih</TableHead>
+                    <TableHead className="text-right">Ders Ücreti</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {lessonLogs.length > 0 ? (
+                    lessonLogs.map((log, index) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="font-medium">{lessonLogs.length - index}</TableCell>
+                        <TableCell>{format(log.date, 'd MMMM yyyy, EEEE HH:mm', { locale: tr })}</TableCell>
+                        <TableCell className="text-right">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(log.lessonPrice)}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="h-24 text-center">
+                        Henüz işlenmiş ders kaydı yok.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+          </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -102,11 +102,14 @@ service cloud.firestore {
       }
 
       match /students/{studentId} {
-        allow read, write: if isOwner(userId);
+        allow get: if true;
+        allow list, write: if isOwner(userId);
       }
 
       match /lessonLogs/{lessonLogId} {
-        allow read, write: if isOwner(userId);
+        allow get: if true;
+        allow list: if true;
+        allow write: if isOwner(userId);
       }
     }
   }

@@ -8,7 +8,8 @@ import type { Student, LessonLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Users, Wallet } from 'lucide-react';
+import { Link as LinkIcon, Plus, Trash2, Users, Wallet } from 'lucide-react';
+import Link from 'next/link';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -296,7 +297,16 @@ export function LessonTracker() {
                               <div className="flex-1 flex items-center gap-4">
                                   <Users className="h-6 w-6 text-primary flex-shrink-0" />
                                   <div>
-                                      <p className="font-bold text-lg">{student.name}</p>
+                                      <div className="flex items-center gap-2">
+                                          <p className="font-bold text-lg">{student.name}</p>
+                                          {user && (
+                                            <Link href={`/student/${user.uid}/${student.id}`} passHref legacyBehavior>
+                                                <a target="_blank" rel="noopener noreferrer" aria-label={`${student.name} rapor sayfasını aç`}>
+                                                    <LinkIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                                </a>
+                                            </Link>
+                                          )}
+                                      </div>
                                       <p className="text-sm text-muted-foreground">Ders Ücreti: {formatCurrency(student.lessonPrice)}</p>
                                   </div>
                               </div>
