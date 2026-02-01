@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp, collectionGroup, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, query, where, limit } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Student, LessonLog, BalanceLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -59,15 +59,14 @@ export function LessonTracker() {
   const { data: rawStudents, isLoading: isStudentsLoading } = useCollection<Omit<Student, 'id'>>(studentsCollectionRef);
   const { data: rawLessonLogs } = useCollection<Omit<LessonLog, 'id'>>(lessonLogsCollectionRef);
 
+  // This feature is temporarily disabled to prevent a persistent app crash
+  // caused by a CollectionGroup query issue. A more robust solution will be implemented.
+  /*
   const allBalanceLogsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    // The orderBy('date', 'desc') clause requires a composite index in Firestore.
-    // To avoid this requirement and the resulting permission errors if the index doesn't exist,
-    // we remove the orderBy clause from the query and perform the sorting on the client side.
     return query(
         collectionGroup(firestore, 'balanceLogs'), 
-        where('userId', '==', user.uid), 
-        // orderBy('date', 'desc'), // Removed to prevent needing a composite index
+        where('userId', '==', user.uid),
         limit(15)
     );
   }, [firestore, user]);
@@ -80,9 +79,11 @@ export function LessonTracker() {
       ...l,
       date: (l.date as any)?.toDate() ?? new Date(),
     }));
-    // Sort on the client side since orderBy was removed from the query
+    // Sort on the client side
     return logsWithDates.sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [rawAllBalanceLogs]);
+  */
+
 
   const students = useMemo(() => {
     if (!rawStudents) return [];
@@ -343,6 +344,7 @@ export function LessonTracker() {
         </Card>
       </div>
 
+      {/*
       <Card>
         <CardHeader>
             <CardTitle>Son Bakiye Hareketleri</CardTitle>
@@ -381,6 +383,7 @@ export function LessonTracker() {
             )}
         </CardContent>
       </Card>
+      */}
 
       <Card>
         <CardHeader>
