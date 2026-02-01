@@ -61,10 +61,13 @@ export function LessonTracker() {
 
   const allBalanceLogsQuery = useMemoFirebase(() => {
     if (!user) return null;
+    // The orderBy('date', 'desc') clause requires a composite index in Firestore.
+    // To avoid this requirement and the resulting permission errors if the index doesn't exist,
+    // we remove the orderBy clause from the query and perform the sorting on the client side.
     return query(
         collectionGroup(firestore, 'balanceLogs'), 
         where('userId', '==', user.uid), 
-        orderBy('date', 'desc'),
+        // orderBy('date', 'desc'), // Removed to prevent needing a composite index
         limit(15)
     );
   }, [firestore, user]);
@@ -73,10 +76,12 @@ export function LessonTracker() {
 
   const allBalanceLogs = useMemo(() => {
     if (!rawAllBalanceLogs) return [];
-    return rawAllBalanceLogs.map(l => ({
+    const logsWithDates = rawAllBalanceLogs.map(l => ({
       ...l,
       date: (l.date as any)?.toDate() ?? new Date(),
     }));
+    // Sort on the client side since orderBy was removed from the query
+    return logsWithDates.sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [rawAllBalanceLogs]);
 
   const students = useMemo(() => {

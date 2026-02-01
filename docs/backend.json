@@ -258,6 +258,10 @@
             "type": "string",
             "description": "The ID of the student whose balance changed."
         },
+        "studentName": {
+            "type": "string",
+            "description": "The name of the student (denormalized)."
+        },
         "date": {
           "type": "string",
           "format": "date-time",
@@ -279,6 +283,7 @@
       "required": [
         "userId",
         "studentId",
+        "studentName",
         "date",
         "amountChanged",
         "newBalance",
