@@ -343,7 +343,9 @@ export function LessonTracker() {
                           </p>
                       </div>
                       <div className="hidden lg:flex flex-1 flex-row gap-2 items-center" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleLessonDone(student)}>Dersi İşle</Button>
+                          <Button asChild variant="outline" className="w-full sm:w-auto" onClick={() => handleLessonDone(student)}>
+                            <div>Dersi İşle</div>
+                          </Button>
                           <div className="flex w-full sm:w-auto gap-2">
                               <Input
                                   type="number"
@@ -353,14 +355,18 @@ export function LessonTracker() {
                                   onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
                                   onKeyDown={(e) => e.key === 'Enter' && handleAddFunds(student)}
                               />
-                              <Button className="w-full sm:w-auto" onClick={() => handleAddFunds(student)}>Ders Ekle</Button>
+                              <Button asChild className="w-full sm:w-auto" onClick={() => handleAddFunds(student)}>
+                                <div>Ders Ekle</div>
+                              </Button>
                           </div>
                       </div>
                       <div className="flex-none ml-2" onClick={(e) => e.stopPropagation()}>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <Button asChild variant="ghost" size="icon">
+                                <div>
                                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                                </div>
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
@@ -453,3 +459,4 @@ export function LessonTracker() {
       </Card>
     </div>
   );
+}
