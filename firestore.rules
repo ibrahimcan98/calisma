@@ -128,7 +128,7 @@ service cloud.firestore {
     // The `list` operation is only permitted if the document's `userId` field
     // matches the person making the request. This ensures a user can only see their own data.
     match /{path=**}/balanceLogs/{balanceLogId} {
-        allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if resource.data.userId == request.auth.uid;
     }
   }
 }
