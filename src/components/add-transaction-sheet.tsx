@@ -29,16 +29,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { CalendarIcon, Circle, Plus } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { tr } from 'date-fns/locale/tr';
+import { Circle, Plus } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import type { Category, Transaction } from '@/lib/types';
 import { useState } from 'react';
@@ -49,9 +40,7 @@ const formSchema = z.object({
     required_error: 'Lütfen bir işlem türü seçin.',
   }),
   amount: z.coerce.number().positive({ message: 'Tutar pozitif olmalıdır.' }),
-  date: z.date({
-    required_error: 'Bir tarih gereklidir.',
-  }),
+  date: z.string().min(1, { message: 'Bir tarih gereklidir.' }),
   category: z.string().min(1, { message: 'Lütfen bir kategori seçin.' }),
   subCategory: z.string().optional(),
   description: z.string().min(2, {
@@ -83,7 +72,7 @@ export function AddTransactionSheet({
     defaultValues: {
       type: 'Expense',
       amount: 0,
-      date: new Date(),
+      date: new Date().toISOString().split('T')[0],
       description: '',
     },
   });
@@ -91,7 +80,12 @@ export function AddTransactionSheet({
   const selectedCategory = categories.find(c => c.value === form.watch('category'));
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    onAddTransaction(values);
+    // Add T00:00:00 to parse the date in the local timezone instead of UTC
+    const localDate = new Date(`${values.date}T00:00:00`);
+    onAddTransaction({
+      ...values,
+      date: localDate,
+    });
     form.reset();
     onOpenChange(false);
     toast({
@@ -162,37 +156,11 @@ export function AddTransactionSheet({
                 control={form.control}
                 name="date"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
+                  <FormItem>
                     <FormLabel>Tarih</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={'outline'}
-                            className={cn(
-                              'w-full pl-3 text-left font-normal',
-                              !field.value && 'text-muted-foreground'
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, 'PPP', { locale: tr })
-                            ) : (
-                              <span>Bir tarih seçin</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          locale={tr}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
