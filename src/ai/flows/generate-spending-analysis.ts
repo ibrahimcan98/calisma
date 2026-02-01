@@ -13,7 +13,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const SpendingAnalysisInputSchema = z.object({
-  transactionsJson: z.string().describe('A JSON string of an array of transaction objects.'),
+  transactions: z.string().describe('A string containing a list of financial transactions, with each transaction on a new line.'),
 });
 export type SpendingAnalysisInput = z.infer<typeof SpendingAnalysisInputSchema>;
 
@@ -33,12 +33,12 @@ const prompt = ai.definePrompt({
   name: 'spendingAnalysisPrompt',
   input: {schema: SpendingAnalysisInputSchema},
   output: {schema: SpendingAnalysisOutputSchema},
-  prompt: `You are a personal finance advisor. Analyze the following spending data, provided as a JSON string. The JSON contains an array of transaction objects. Each object has the following fields: 'date', 'type' ('Income' or 'Expense'), 'category', 'subCategory' (optional), 'amount', and 'description'.
+  prompt: `You are a personal finance advisor. Analyze the following list of financial transactions.
 
 Based on this data, provide a detailed analysis of spending patterns by category over time. Focus on the 'Expense' types. Also, provide specific, actionable suggestions for improving spending habits.
 
-Spending Data:
-{{{transactionsJson}}}`,
+Here is the transaction data:
+{{{transactions}}}`,
 });
 
 const generateSpendingAnalysisFlow = ai.defineFlow(

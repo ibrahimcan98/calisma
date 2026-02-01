@@ -14,15 +14,17 @@ export async function getSpendingAnalysis(transactions: Transaction[]) {
     };
   }
 
+  // Convert transactions to a human-readable string format
+  const transactionsString = transactions
+    .map(t => {
+      const subCategory = t.subCategory ? `, Sub-category: ${t.subCategory}` : '';
+      return `- Date: ${t.date.toISOString().split('T')[0]}, Type: ${t.type}, Amount: ${t.amount}, Category: ${t.category}${subCategory}, Description: "${t.description}"`;
+    })
+    .join('\n');
+
+
   const analysisInput: SpendingAnalysisInput = {
-    transactionsJson: JSON.stringify(transactions.map((t) => ({
-      date: t.date.toISOString().split('T')[0], // Format as YYYY-MM-DD
-      type: t.type,
-      category: t.category,
-      subCategory: t.subCategory,
-      amount: t.amount,
-      description: t.description,
-    }))),
+    transactions: transactionsString,
   };
 
   try {
