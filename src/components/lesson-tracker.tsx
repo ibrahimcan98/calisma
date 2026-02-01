@@ -2,13 +2,13 @@
 
 import { useState, useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, collectionGroup, query, where, orderBy, limit } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import type { Student, LessonLog } from '@/lib/types';
+import type { Student, LessonLog, BalanceLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Link as LinkIcon, Plus, Trash2, Users, Wallet } from 'lucide-react';
+import { Link as LinkIcon, Plus, Trash2, Users, Wallet, TrendingUp, BookUser, Activity } from 'lucide-react';
 import Link from 'next/link';
 import {
   AlertDialog,
@@ -59,6 +59,26 @@ export function LessonTracker() {
   const { data: rawStudents, isLoading: isStudentsLoading } = useCollection<Omit<Student, 'id'>>(studentsCollectionRef);
   const { data: rawLessonLogs } = useCollection<Omit<LessonLog, 'id'>>(lessonLogsCollectionRef);
 
+  const allBalanceLogsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+        collectionGroup(firestore, 'balanceLogs'), 
+        where('userId', '==', user.uid), 
+        orderBy('date', 'desc'),
+        limit(15)
+    );
+  }, [firestore, user]);
+
+  const { data: rawAllBalanceLogs, isLoading: areAllLogsLoading } = useCollection<Omit<BalanceLog, 'id'>>(allBalanceLogsQuery);
+
+  const allBalanceLogs = useMemo(() => {
+    if (!rawAllBalanceLogs) return [];
+    return rawAllBalanceLogs.map(l => ({
+      ...l,
+      date: (l.date as any)?.toDate() ?? new Date(),
+    }));
+  }, [rawAllBalanceLogs]);
+
   const students = useMemo(() => {
     if (!rawStudents) return [];
     return rawStudents.map(s => ({
@@ -79,6 +99,7 @@ export function LessonTracker() {
     const now = new Date();
     const currentWeekLogs = lessonLogs.filter(log => isSameWeek(log.date, now, { weekStartsOn: 1 }));
     const weeklyEarnings = currentWeekLogs.reduce((sum, log) => sum + log.lessonPrice, 0);
+    const totalEarnings = lessonLogs.reduce((sum, log) => sum + log.lessonPrice, 0);
 
     const logsByWeek = lessonLogs.reduce<Record<string, { lessons: LessonLog[], totalEarnings: number, startDate: Date }>>((acc, log) => {
         const weekStart = startOfWeek(log.date, { weekStartsOn: 1 });
@@ -98,7 +119,7 @@ export function LessonTracker() {
     
     const sortedWeeks = Object.keys(logsByWeek).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
-    return { weeklyEarnings, logsByWeek, sortedWeeks };
+    return { weeklyEarnings, totalEarnings, logsByWeek, sortedWeeks };
   }, [lessonLogs]);
   
   const formatCurrency = (amount: number) => {
@@ -176,6 +197,7 @@ export function LessonTracker() {
     addDocumentNonBlocking(balanceLogsCollectionRef, {
         userId: user.uid,
         studentId: student.id,
+        studentName: student.name,
         date: new Date(),
         amountChanged: -student.lessonPrice,
         newBalance: newBalance,
@@ -208,6 +230,7 @@ export function LessonTracker() {
     addDocumentNonBlocking(balanceLogsCollectionRef, {
         userId: user.uid,
         studentId: student.id,
+        studentName: student.name,
         date: new Date(),
         amountChanged: amountToAdd,
         newBalance: newBalance,
@@ -263,7 +286,7 @@ export function LessonTracker() {
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Bu Haftalık Kazanç</CardTitle>
@@ -293,7 +316,67 @@ export function LessonTracker() {
             </AlertDialog>
           </CardFooter>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Toplam Kazanç</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(weeklyStats.totalEarnings)}</div>
+            <p className="text-xs text-muted-foreground">Tüm zamanların toplam ders geliri</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Aktif Öğrenci</CardTitle>
+            <BookUser className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{students.length}</div>
+            <p className="text-xs text-muted-foreground">Toplam kayıtlı öğrenci sayısı</p>
+          </CardContent>
+        </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+            <CardTitle>Son Bakiye Hareketleri</CardTitle>
+            <CardDescription>Öğrencilerin hesaplarına yapılan son bakiye eklemeleri ve ders işlemeleri.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            {areAllLogsLoading ? (
+                <p className="text-center p-8 text-muted-foreground">Yükleniyor...</p>
+            ) : allBalanceLogs.length > 0 ? (
+                <ul className="space-y-4">
+                    {allBalanceLogs.map(log => (
+                        <li key={log.id} className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
+                            <div className="flex items-center gap-3">
+                                <div className={cn("flex h-8 w-8 items-center justify-center rounded-full", log.amountChanged > 0 ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50')}>
+                                    {log.amountChanged > 0 ? 
+                                        <Wallet className="h-4 w-4 text-green-600" /> :
+                                        <Activity className="h-4 w-4 text-red-600" />
+                                    }
+                                </div>
+                                <div>
+                                    <p className="font-semibold">{log.studentName}</p>
+                                    <p className="text-sm text-muted-foreground">{log.description}</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className={cn("font-bold", log.amountChanged > 0 ? 'text-green-600' : 'text-red-600')}>
+                                    {log.amountChanged > 0 ? '+' : ''}{formatCurrency(log.amountChanged)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">{format(log.date, 'd MMM, HH:mm', { locale: tr })}</p>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p className="text-center p-8 text-muted-foreground">Henüz bakiye hareketi yok.</p>
+            )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Öğrenci Yönetimi</CardTitle>
@@ -326,7 +409,7 @@ export function LessonTracker() {
                                       href={`/student/${user.uid}/${student.id}`} 
                                       target="_blank" 
                                       rel="noopener noreferrer" 
-                                      aria-label={`${student.name} rapor sayfasını aç`} 
+                                      aria-label={`${student.name} rapor sayfasını aç`}
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <LinkIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
@@ -343,9 +426,11 @@ export function LessonTracker() {
                           </p>
                       </div>
                       <div className="hidden lg:flex flex-1 flex-row gap-2 items-center" onClick={(e) => e.stopPropagation()}>
-                          <Button asChild variant="outline" className="w-full sm:w-auto" onClick={() => handleLessonDone(student)}>
-                            <div>Dersi İşle</div>
-                          </Button>
+                          <div onClick={() => handleLessonDone(student)}>
+                              <Button asChild variant="outline" className="w-full sm:w-auto">
+                                <div>Dersi İşle</div>
+                              </Button>
+                          </div>
                           <div className="flex w-full sm:w-auto gap-2">
                               <Input
                                   type="number"
@@ -355,15 +440,17 @@ export function LessonTracker() {
                                   onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
                                   onKeyDown={(e) => e.key === 'Enter' && handleAddFunds(student)}
                               />
-                              <Button asChild className="w-full sm:w-auto" onClick={() => handleAddFunds(student)}>
-                                <div>Ders Ekle</div>
-                              </Button>
+                               <div onClick={() => handleAddFunds(student)}>
+                                  <Button asChild className="w-full sm:w-auto">
+                                    <div>Ders Ekle</div>
+                                  </Button>
+                              </div>
                           </div>
                       </div>
                       <div className="flex-none ml-2" onClick={(e) => e.stopPropagation()}>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button asChild variant="ghost" size="icon">
+                               <Button asChild variant="ghost" size="icon">
                                 <div>
                                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                                 </div>

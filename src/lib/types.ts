@@ -60,6 +60,7 @@ export type BalanceLog = {
     id: string;
     userId: string;
     studentId: string;
+    studentName: string;
     date: Date;
     amountChanged: number;
     newBalance: number;
