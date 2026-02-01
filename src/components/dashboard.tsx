@@ -20,6 +20,7 @@ import {
   CalendarDays,
   History,
   Scale,
+  PiggyBank,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TransactionsTable } from './transactions-table';
@@ -71,6 +72,7 @@ export function Dashboard() {
         currentMonthExpenses: 0,
         lastMonthExpenses: 0,
         averageMonthlyExpense: 0,
+        lastMonthSavings: 0,
       };
     }
 
@@ -82,10 +84,14 @@ export function Dashboard() {
     let totalExpenses = 0;
     let currentMonthExpenses = 0;
     let lastMonthExpenses = 0;
+    let lastMonthIncome = 0;
 
     for (const t of transactions) {
         if (t.type === 'Income') {
             totalIncome += t.amount;
+            if (t.date >= startOfLastMonth && t.date < startOfCurrentMonth) {
+                lastMonthIncome += t.amount;
+            }
         } else { // Expense
             totalExpenses += t.amount;
             if (t.date >= startOfCurrentMonth) {
@@ -99,6 +105,7 @@ export function Dashboard() {
     const oldestTransaction = transactions.length > 0 ? transactions.reduce((earliest, t) => earliest.date > t.date ? t : earliest) : {date: new Date()};
     const totalMonths = differenceInCalendarMonths(now, oldestTransaction.date) + 1;
     const averageMonthlyExpense = totalExpenses / (totalMonths > 0 ? totalMonths : 1);
+    const lastMonthSavings = lastMonthIncome - lastMonthExpenses;
 
     return {
       balance: totalIncome - totalExpenses,
@@ -107,6 +114,7 @@ export function Dashboard() {
       currentMonthExpenses,
       lastMonthExpenses,
       averageMonthlyExpense,
+      lastMonthSavings,
     };
   }, [transactions]);
   
@@ -222,6 +230,20 @@ export function Dashboard() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Hesaplanan aylık ortalama
+              </p>
+            </CardContent>
+          </Card>
+           <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Geçen Aydan Artan</CardTitle>
+              <PiggyBank className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(stats.lastMonthSavings)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Geçen ayki gelir - gider farkı
               </p>
             </CardContent>
           </Card>
