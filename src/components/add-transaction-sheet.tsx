@@ -38,6 +38,7 @@ import {
 import { CalendarIcon, Circle, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 import { Textarea } from '@/components/ui/textarea';
 import type { Category, Transaction } from '@/lib/types';
 import { useState } from 'react';
@@ -45,16 +46,16 @@ import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   type: z.enum(['Income', 'Expense'], {
-    required_error: 'Please select a transaction type.',
+    required_error: 'Lütfen bir işlem türü seçin.',
   }),
-  amount: z.coerce.number().positive({ message: 'Amount must be positive.' }),
+  amount: z.coerce.number().positive({ message: 'Tutar pozitif olmalıdır.' }),
   date: z.date({
-    required_error: 'A date is required.',
+    required_error: 'Bir tarih gereklidir.',
   }),
-  category: z.string().min(1, { message: 'Please select a category.' }),
+  category: z.string().min(1, { message: 'Lütfen bir kategori seçin.' }),
   subCategory: z.string().optional(),
   description: z.string().min(2, {
-    message: 'Description must be at least 2 characters.',
+    message: 'Açıklama en az 2 karakter olmalıdır.',
   }),
 });
 
@@ -94,8 +95,8 @@ export function AddTransactionSheet({
     form.reset();
     onOpenChange(false);
     toast({
-      title: 'Success!',
-      description: 'Your transaction has been added.',
+      title: 'Başarılı!',
+      description: 'İşleminiz eklendi.',
     });
   }
 
@@ -115,9 +116,9 @@ export function AddTransactionSheet({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="flex flex-col">
         <SheetHeader>
-          <SheetTitle>Add a New Transaction</SheetTitle>
+          <SheetTitle>Yeni İşlem Ekle</SheetTitle>
           <SheetDescription>
-            Enter the details of your income or expense.
+            Gelir veya giderinizin detaylarını girin.
           </SheetDescription>
         </SheetHeader>
         <Form {...form}>
@@ -128,16 +129,16 @@ export function AddTransactionSheet({
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Type</FormLabel>
+                    <FormLabel>Tür</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select transaction type" />
+                          <SelectValue placeholder="İşlem türünü seçin" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Income">Income</SelectItem>
-                        <SelectItem value="Expense">Expense</SelectItem>
+                        <SelectItem value="Income">Gelir</SelectItem>
+                        <SelectItem value="Expense">Gider</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -149,7 +150,7 @@ export function AddTransactionSheet({
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Amount</FormLabel>
+                    <FormLabel>Tutar</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="0.00" {...field} />
                     </FormControl>
@@ -162,7 +163,7 @@ export function AddTransactionSheet({
                 name="date"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Date</FormLabel>
+                    <FormLabel>Tarih</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -174,9 +175,9 @@ export function AddTransactionSheet({
                             )}
                           >
                             {field.value ? (
-                              format(field.value, 'PPP')
+                              format(field.value, 'PPP', { locale: tr })
                             ) : (
-                              <span>Pick a date</span>
+                              <span>Bir tarih seçin</span>
                             )}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
@@ -187,6 +188,7 @@ export function AddTransactionSheet({
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
+                          locale={tr}
                           initialFocus
                         />
                       </PopoverContent>
@@ -200,11 +202,11 @@ export function AddTransactionSheet({
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Category</FormLabel>
+                    <FormLabel>Kategori</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
+                          <SelectValue placeholder="Bir kategori seçin" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -221,19 +223,19 @@ export function AddTransactionSheet({
                           onClick={() => setIsAddingCategory(true)}
                           className="w-full text-sm flex items-center gap-2 p-2 hover:bg-accent rounded-sm"
                         >
-                          <Plus className="h-4 w-4" /> Add new category
+                          <Plus className="h-4 w-4" /> Yeni kategori ekle
                         </button>
                       </SelectContent>
                     </Select>
                     {isAddingCategory && (
                       <div className="flex gap-2 mt-2">
                         <Input 
-                          placeholder="New category name"
+                          placeholder="Yeni kategori adı"
                           value={newCategory}
                           onChange={(e) => setNewCategory(e.target.value)}
                         />
-                        <Button type="button" onClick={handleAddCategory}>Add</Button>
-                        <Button type="button" variant="ghost" onClick={() => setIsAddingCategory(false)}>Cancel</Button>
+                        <Button type="button" onClick={handleAddCategory}>Ekle</Button>
+                        <Button type="button" variant="ghost" onClick={() => setIsAddingCategory(false)}>İptal</Button>
                       </div>
                     )}
                     <FormMessage />
@@ -246,11 +248,11 @@ export function AddTransactionSheet({
                   name="subCategory"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Sub-category</FormLabel>
+                      <FormLabel>Alt Kategori</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a sub-category" />
+                            <SelectValue placeholder="Bir alt kategori seçin" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -271,9 +273,9 @@ export function AddTransactionSheet({
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>Açıklama</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="e.g. Coffee with a friend" {...field} />
+                      <Textarea placeholder="örn. Arkadaşla kahve" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -282,9 +284,9 @@ export function AddTransactionSheet({
             </div>
             <SheetFooter>
                 <SheetClose asChild>
-                  <Button type="button" variant="outline">Cancel</Button>
+                  <Button type="button" variant="outline">İptal</Button>
                 </SheetClose>
-                <Button type="submit">Add Transaction</Button>
+                <Button type="submit">İşlemi Ekle</Button>
             </SheetFooter>
           </form>
         </Form>
