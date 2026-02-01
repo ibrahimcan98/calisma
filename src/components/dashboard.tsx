@@ -35,6 +35,13 @@ import { SavingsGoals } from './savings-goals';
 import { SubscriptionsPanel } from './subscriptions-panel';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 
 export function Dashboard() {
@@ -46,6 +53,7 @@ export function Dashboard() {
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
   const [editableLastMonthSavings, setEditableLastMonthSavings] = useState('0.00');
+  const [currency, setCurrency] = useState('TRY');
 
   const transactionsCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -154,9 +162,10 @@ export function Dashboard() {
   };
   
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('tr-TR', {
+    const locale = currency === 'TRY' ? 'tr-TR' : currency === 'USD' ? 'en-US' : 'de-DE';
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: 'TRY',
+      currency: currency,
     }).format(amount);
   };
 
@@ -318,16 +327,26 @@ export function Dashboard() {
         </div>
         
         <div className="pt-8">
-            <SavingsGoals />
+            <SavingsGoals formatCurrency={formatCurrency} />
         </div>
 
         <div className="pt-8">
-            <SubscriptionsPanel categories={categories} />
+            <SubscriptionsPanel categories={categories} formatCurrency={formatCurrency} />
         </div>
 
         <div className="flex items-center gap-2 mt-8">
           <h2 className="text-2xl font-bold tracking-tight flex-1">Son İşlemler</h2>
           <div className="ml-auto flex items-center gap-2">
+            <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger className="w-[100px]">
+                    <SelectValue placeholder="Para Birimi" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="TRY">TRY</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                </SelectContent>
+            </Select>
             <Button variant="outline" onClick={() => setAnalysisDialogOpen(true)}>
               <Sparkles className="mr-2 h-4 w-4" />
               AI Analizi
@@ -343,6 +362,7 @@ export function Dashboard() {
           transactions={sortedTransactions}
           categories={categories}
           onDeleteTransaction={handleDeleteTransaction}
+          formatCurrency={formatCurrency}
         />
       </main>
 
@@ -358,6 +378,7 @@ export function Dashboard() {
         onOpenChange={setAnalysisDialogOpen}
         transactions={sortedTransactions}
         categories={categories}
+        formatCurrency={formatCurrency}
       />
     </div>
   );

@@ -18,21 +18,16 @@ type TransactionsTableProps = {
   transactions: Transaction[];
   categories: Category[];
   onDeleteTransaction: (id: string) => void;
+  formatCurrency: (amount: number) => string;
 };
 
 export function TransactionsTable({
   transactions,
   categories,
   onDeleteTransaction,
+  formatCurrency,
 }: TransactionsTableProps) {
   const categoryMap = new Map(categories.map((c) => [c.value, c]));
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('tr-TR', {
-      style: 'currency',
-      currency: 'TRY',
-    }).format(amount);
-  };
 
   return (
     <div className="w-full overflow-hidden rounded-lg border shadow-sm">

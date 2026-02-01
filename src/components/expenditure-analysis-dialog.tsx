@@ -28,6 +28,7 @@ type ExpenditureAnalysisDialogProps = {
   onOpenChange: (isOpen: boolean) => void;
   transactions: Transaction[];
   categories: Category[];
+  formatCurrency: (amount: number) => string;
 };
 
 export function ExpenditureAnalysisDialog({
@@ -35,6 +36,7 @@ export function ExpenditureAnalysisDialog({
   onOpenChange,
   transactions,
   categories,
+  formatCurrency,
 }: ExpenditureAnalysisDialogProps) {
   const [analysis, setAnalysis] = useState<{ analysis: string; suggestions: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -73,8 +75,6 @@ export function ExpenditureAnalysisDialog({
       setIsLoading(false);
     }
   };
-  
-  const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>

@@ -24,9 +24,10 @@ import { format, addMonths, addYears } from 'date-fns';
 
 type SubscriptionsPanelProps = {
     categories: Category[];
+    formatCurrency: (amount: number) => string;
 };
 
-export function SubscriptionsPanel({ categories }: SubscriptionsPanelProps) {
+export function SubscriptionsPanel({ categories, formatCurrency }: SubscriptionsPanelProps) {
   const { user } = useUser();
   const firestore = useFirestore();
 
@@ -74,13 +75,6 @@ export function SubscriptionsPanel({ categories }: SubscriptionsPanelProps) {
         }
     }
     return nextDate;
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('tr-TR', {
-      style: 'currency',
-      currency: 'TRY',
-    }).format(amount);
   };
 
   return (

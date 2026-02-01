@@ -24,7 +24,7 @@ import {
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
 
-export function SavingsGoals() {
+export function SavingsGoals({ formatCurrency }: { formatCurrency: (amount: number) => string }) {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -101,13 +101,6 @@ export function SavingsGoals() {
   const handleFundsInputChange = (goalId: string, value: string) => {
     setFundsToAdd(prev => ({...prev, [goalId]: value}));
   }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('tr-TR', {
-      style: 'currency',
-      currency: 'TRY',
-    }).format(amount);
-  };
 
   return (
     <div className="w-full">
