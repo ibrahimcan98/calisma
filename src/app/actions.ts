@@ -15,12 +15,12 @@ export async function getSpendingAnalysis(transactions: Transaction[]) {
   }
 
   const analysisInput: SpendingAnalysisInput = {
-    transactions: transactions.map((t) => ({
+    transactionsJson: JSON.stringify(transactions.map((t) => ({
       date: t.date.toISOString().split('T')[0], // Format as YYYY-MM-DD
       category: t.category,
       subCategory: t.subCategory,
       amount: t.amount,
-    })),
+    }))),
   };
 
   try {
