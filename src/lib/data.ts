@@ -11,6 +11,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import type { Category, Transaction } from '@/lib/types';
+import { startOfDay, subDays, subMonths } from 'date-fns';
 
 export const categories: Category[] = [
   { value: 'food', label: 'Food', icon: Utensils, subCategories: [
@@ -53,10 +54,12 @@ export const categories: Category[] = [
   { value: 'other', label: 'Other', icon: Circle, subCategories: [] },
 ];
 
+const today = new Date();
+
 export const initialTransactions: Transaction[] = [
   {
     id: '1',
-    date: new Date(new Date().setDate(new Date().getDate() - 1)),
+    date: startOfDay(subDays(today, 1)),
     amount: 5000,
     type: 'Income',
     category: 'salary',
@@ -64,7 +67,7 @@ export const initialTransactions: Transaction[] = [
   },
   {
     id: '2',
-    date: new Date(new Date().setDate(new Date().getDate() - 2)),
+    date: startOfDay(subDays(today, 2)),
     amount: 1500,
     type: 'Expense',
     category: 'housing',
@@ -73,7 +76,7 @@ export const initialTransactions: Transaction[] = [
   },
   {
     id: '3',
-    date: new Date(new Date().setDate(new Date().getDate() - 3)),
+    date: startOfDay(subDays(today, 3)),
     amount: 75.5,
     type: 'Expense',
     category: 'food',
@@ -82,7 +85,7 @@ export const initialTransactions: Transaction[] = [
   },
   {
     id: '4',
-    date: new Date(new Date().setDate(new Date().getDate() - 4)),
+    date: startOfDay(subDays(today, 4)),
     amount: 50,
     type: 'Expense',
     category: 'transportation',
@@ -91,7 +94,7 @@ export const initialTransactions: Transaction[] = [
   },
   {
     id: '5',
-    date: new Date(new Date().setDate(new Date().getDate() - 5)),
+    date: startOfDay(subDays(today, 5)),
     amount: 14.99,
     type: 'Expense',
     category: 'entertainment',
@@ -100,7 +103,7 @@ export const initialTransactions: Transaction[] = [
   },
   {
     id: '6',
-    date: new Date(new Date().setDate(new Date().getDate() - 6)),
+    date: startOfDay(subDays(today, 6)),
     amount: 45.20,
     type: 'Expense',
     category: 'food',
@@ -109,7 +112,7 @@ export const initialTransactions: Transaction[] = [
   },
   {
     id: '7',
-    date: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+    date: startOfDay(subMonths(today, 1)),
     amount: 5000,
     type: 'Income',
     category: 'salary',
@@ -117,7 +120,7 @@ export const initialTransactions: Transaction[] = [
   },
   {
     id: '8',
-    date: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+    date: startOfDay(subMonths(today, 1)),
     amount: 1500,
     type: 'Expense',
     category: 'housing',
