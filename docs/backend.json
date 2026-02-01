@@ -90,6 +90,42 @@
         "category",
         "description"
       ]
+    },
+    "Goal": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Savings Goal",
+      "description": "Represents a user's savings goal.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this goal."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the goal (e.g., 'Vacation Fund')."
+        },
+        "targetAmount": {
+          "type": "number",
+          "description": "The target amount to save for the goal."
+        },
+        "currentAmount": {
+          "type": "number",
+          "description": "The current amount saved towards the goal."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for when the goal was created."
+        }
+      },
+      "required": [
+        "userId",
+        "name",
+        "targetAmount",
+        "currentAmount",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -135,8 +171,28 @@
             }
           ]
         }
+      },
+      {
+        "path": "/users/{userId}/goals/{goalId}",
+        "definition": {
+          "entityName": "Goal",
+          "schema": {
+            "$ref": "#/backend/entities/Goal"
+          },
+          "description": "Stores individual savings goals for a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "goalId",
+              "description": "The unique identifier of the goal."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to manage user profiles securely and efficiently. The primary collection is `/users/{userId}`, which stores individual user profiles. This path-based ownership model provides excellent security and simplifies rules. This structure facilitates simple, robust, and easily debuggable security rules. There is no denormalized authorization data. No collaborative data is present in this version. Transactions are stored in a subcollection under each user to enforce ownership and for data locality."
+    "reasoning": "The Firestore structure is designed to manage user profiles securely and efficiently. The primary collection is `/users/{userId}`, which stores individual user profiles. This path-based ownership model provides excellent security and simplifies rules. This structure facilitates simple, robust, and easily debuggable security rules. There is no denormalized authorization data. No collaborative data is present in this version. Transactions and Goals are stored in a subcollection under each user to enforce ownership and for data locality."
   }
 }

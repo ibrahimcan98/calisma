@@ -19,4 +19,14 @@ export type Category = {
   subCategories?: { value: string; label: string }[];
 };
 
+export type Goal = {
+  id: string;
+  userId: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  createdAt: Date;
+};
+
+
 export type Period = 'weekly' | 'monthly';

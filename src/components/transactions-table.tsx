@@ -28,9 +28,9 @@ export function TransactionsTable({
   const categoryMap = new Map(categories.map((c) => [c.value, c]));
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('tr-TR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'TRY',
     }).format(amount);
   };
 
@@ -40,12 +40,12 @@ export function TransactionsTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[200px] hidden md:table-cell">
-              Category
+              Kategori
             </TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
+            <TableHead>Açıklama</TableHead>
+            <TableHead className="text-right">Tutar</TableHead>
             <TableHead className="text-right hidden sm:table-cell">
-              Date
+              Tarih
             </TableHead>
             <TableHead className="w-[50px] text-right"></TableHead>
           </TableRow>
@@ -86,6 +86,8 @@ export function TransactionsTable({
                       'text-right font-semibold',
                       transaction.type === 'Income'
                         ? 'text-green-600'
+                        : transaction.category === 'savings'
+                        ? 'text-blue-600'
                         : 'text-red-600'
                     )}
                   >
@@ -93,7 +95,7 @@ export function TransactionsTable({
                     {formatCurrency(transaction.amount)}
                   </TableCell>
                   <TableCell className="text-right hidden sm:table-cell">
-                    {format(transaction.date, 'MMM d, yyyy')}
+                    {format(transaction.date, 'd MMM, yyyy')}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -103,7 +105,7 @@ export function TransactionsTable({
                     >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">
-                        Delete transaction
+                        İşlemi sil
                       </span>
                     </Button>
                   </TableCell>
@@ -113,7 +115,7 @@ export function TransactionsTable({
           ) : (
             <TableRow>
               <TableCell colSpan={5} className="h-24 text-center">
-                No transactions for this period.
+                Bu dönem için işlem yok.
               </TableCell>
             </TableRow>
           )}

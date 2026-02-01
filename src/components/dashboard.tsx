@@ -26,9 +26,12 @@ import { TransactionsTable } from './transactions-table';
 import { AddTransactionSheet } from './add-transaction-sheet';
 import { ExpenditureAnalysisDialog } from './expenditure-analysis-dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { startOfMonth, subMonths, differenceInCalendarMonths } from 'date-fns';
+import { SavingsGoals } from './savings-goals';
+import { AddGoalSheet } from './add-goal-sheet';
+
 
 export function Dashboard() {
   const { user } = useUser();
@@ -93,7 +96,7 @@ export function Dashboard() {
         }
     }
 
-    const oldestTransaction = transactions.reduce((earliest, t) => earliest.date > t.date ? t : earliest);
+    const oldestTransaction = transactions.length > 0 ? transactions.reduce((earliest, t) => earliest.date > t.date ? t : earliest) : {date: new Date()};
     const totalMonths = differenceInCalendarMonths(now, oldestTransaction.date) + 1;
     const averageMonthlyExpense = totalExpenses / (totalMonths > 0 ? totalMonths : 1);
 
@@ -109,8 +112,7 @@ export function Dashboard() {
   
   const handleAddTransaction = (transaction: Omit<Transaction, 'id'>) => {
     if (!transactionsCollectionRef) return;
-    // `date` is a JS Date object from the form, Firestore will convert it to a Timestamp
-    addDocumentNonBlocking(transactionsCollectionRef, transaction);
+    addDocumentNonBlocking(transactionsCollectionRef, { ...transaction, date: transaction.date });
   };
 
   const handleDeleteTransaction = (id: string) => {
@@ -126,9 +128,9 @@ export function Dashboard() {
   };
   
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('tr-TR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'TRY',
     }).format(amount);
   };
 
@@ -224,8 +226,13 @@ export function Dashboard() {
             </CardContent>
           </Card>
         </div>
+        
+        <div className="pt-8">
+            <SavingsGoals />
+        </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mt-8">
+          <h2 className="text-2xl font-bold tracking-tight flex-1">Son İşlemler</h2>
           <div className="ml-auto flex items-center gap-2">
             <Button variant="outline" onClick={() => setAnalysisDialogOpen(true)}>
               <Sparkles className="mr-2 h-4 w-4" />

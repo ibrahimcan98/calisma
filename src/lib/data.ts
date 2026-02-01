@@ -8,7 +8,8 @@ import {
   GraduationCap,
   Gift,
   Circle,
-  Briefcase
+  Briefcase,
+  PiggyBank
 } from 'lucide-react';
 import type { Category } from '@/lib/types';
 
@@ -50,5 +51,6 @@ export const categories: Category[] = [
   ]},
   { value: 'gifts', label: 'Gifts', icon: Gift, subCategories: []},
   { value: 'salary', label: 'Salary', icon: Briefcase, subCategories: []},
+  { value: 'savings', label: 'Savings', icon: PiggyBank, subCategories: []},
   { value: 'other', label: 'Other', icon: Circle, subCategories: [] },
 ];
