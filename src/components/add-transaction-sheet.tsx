@@ -34,6 +34,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { Category, Transaction } from '@/lib/types';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { startOfDay } from 'date-fns';
 
 const formSchema = z.object({
   type: z.enum(['Income', 'Expense'], {
@@ -82,11 +83,11 @@ export function AddTransactionSheet({
   const selectedCategory = categories.find(c => c.value === form.watch('category'));
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // Add T00:00:00 to parse the date in the local timezone instead of UTC
     const localDate = new Date(`${values.date}T00:00:00`);
+    
     onAddTransaction({
       ...values,
-      date: localDate,
+      date: startOfDay(localDate),
     });
     form.reset();
     onOpenChange(false);
@@ -102,7 +103,7 @@ export function AddTransactionSheet({
         value: newCategory.trim().toLowerCase().replace(/\s+/g, '-'),
         label: newCategory.trim(),
       });
-      form.setValue('category', addedCategory.value);
+      form.setValue('category', addedCategory.value, { shouldValidate: true });
       setNewCategory('');
       setIsAddingCategory(false);
     }
@@ -148,7 +149,7 @@ export function AddTransactionSheet({
                   <FormItem>
                     <FormLabel>Tutar</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="0.00" {...field} />
+                      <Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

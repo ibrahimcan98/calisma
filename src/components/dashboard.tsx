@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   initialTransactions,
   categories as initialCategories,
@@ -36,7 +36,7 @@ export function Dashboard() {
   const [period, setPeriod] = useState<Period>('monthly');
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate] = useState(new Date());
 
   const filteredTransactions = useMemo(() => {
     const now = currentDate;
@@ -70,11 +70,6 @@ export function Dashboard() {
     );
   }, [filteredTransactions]);
   
-  // This effect ensures component logic depending on Date() is executed only on the client
-  useEffect(() => {
-    setCurrentDate(new Date());
-  }, []);
-
   const handleAddTransaction = (transaction: Omit<Transaction, 'id'>) => {
     setTransactions((prev) => [
       ...prev,
