@@ -61,7 +61,8 @@ export function LessonTracker() {
   const handleAddStudent = () => {
     const name = newStudentName.trim();
     const lessonPrice = parseFloat(newStudentLessonPrice);
-    const balance = parseFloat(newStudentBalance) || 0;
+    const startingLessons = parseInt(newStudentBalance, 10) || 0;
+    const balance = startingLessons * (lessonPrice || 0);
 
     if (!studentsCollectionRef || !user || !name || isNaN(lessonPrice) || lessonPrice <= 0) {
       toast({
@@ -153,7 +154,7 @@ export function LessonTracker() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <Input placeholder="Yeni öğrenci adı" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} />
                 <Input type="number" placeholder="Ders ücreti" value={newStudentLessonPrice} onChange={(e) => setNewStudentLessonPrice(e.target.value)} />
-                <Input type="number" placeholder="Başlangıç bakiye (opsiyonel)" value={newStudentBalance} onChange={(e) => setNewStudentBalance(e.target.value)} />
+                <Input type="number" placeholder="Başlangıç ders sayısı (opsiyonel)" value={newStudentBalance} onChange={(e) => setNewStudentBalance(e.target.value)} />
                 <Button onClick={handleAddStudent} className="w-full"><Plus className="mr-2 h-4 w-4" /> Ekle</Button>
             </div>
         </div>
