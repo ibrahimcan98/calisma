@@ -322,10 +322,14 @@ export function LessonTracker() {
                               <div className="flex items-center gap-2">
                                   <p className="font-bold text-lg">{student.name}</p>
                                   {user && (
-                                    <Link href={`/student/${user.uid}/${student.id}`} passHref legacyBehavior>
-                                        <a target="_blank" rel="noopener noreferrer" aria-label={`${student.name} rapor sayfasını aç`} onClick={(e) => e.stopPropagation()}>
-                                            <LinkIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                                        </a>
+                                    <Link 
+                                      href={`/student/${user.uid}/${student.id}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      aria-label={`${student.name} rapor sayfasını aç`} 
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <LinkIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
                                     </Link>
                                   )}
                               </div>
@@ -449,4 +453,3 @@ export function LessonTracker() {
       </Card>
     </div>
   );
-}
