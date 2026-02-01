@@ -56,4 +56,14 @@ export type LessonLog = {
     lessonPrice: number;
 };
 
+export type BalanceLog = {
+    id: string;
+    userId: string;
+    studentId: string;
+    date: Date;
+    amountChanged: number;
+    newBalance: number;
+    description: string;
+};
+
 export type Period = 'weekly' | 'monthly';

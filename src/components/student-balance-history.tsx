@@ -1,0 +1,91 @@
+'use client';
+
+import { useMemo } from 'react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+import type { BalanceLog } from '@/lib/types';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
+
+type StudentBalanceHistoryProps = {
+  userId: string;
+  studentId: string;
+  formatCurrency: (amount: number) => string;
+};
+
+export function StudentBalanceHistory({ userId, studentId, formatCurrency }: StudentBalanceHistoryProps) {
+  const firestore = useFirestore();
+
+  const balanceLogsQuery = useMemoFirebase(() => {
+    const logsCollection = collection(firestore, 'users', userId, 'students', studentId, 'balanceLogs');
+    return query(logsCollection, orderBy('date', 'desc'));
+  }, [firestore, userId, studentId]);
+
+  const { data: rawBalanceLogs, isLoading, error } = useCollection<BalanceLog>(balanceLogsQuery);
+
+  const balanceLogs = useMemo(() => {
+    if (!rawBalanceLogs) return [];
+    return rawBalanceLogs.map(l => ({
+      ...l,
+      date: (l.date as any)?.toDate() ?? new Date(),
+    }));
+  }, [rawBalanceLogs]);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-4">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className="p-4 text-destructive text-center">Bakiye geçmişi yüklenemedi.</p>;
+  }
+
+  return (
+    <div className="bg-muted/50 rounded-b-md">
+      <h4 className="font-semibold text-sm p-4 border-t">Bakiye Geçmişi</h4>
+       <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Tarih</TableHead>
+            <TableHead>Açıklama</TableHead>
+            <TableHead className="text-right">Değişim</TableHead>
+            <TableHead className="text-right">Yeni Bakiye</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {balanceLogs.length > 0 ? (
+            balanceLogs.map((log) => (
+              <TableRow key={log.id}>
+                <TableCell className="text-xs text-muted-foreground">{format(log.date, 'd MMM yy, HH:mm', { locale: tr })}</TableCell>
+                <TableCell className="font-medium">{log.description}</TableCell>
+                <TableCell className={cn("text-right font-medium", log.amountChanged > 0 ? 'text-green-600' : 'text-red-600')}>
+                    {log.amountChanged > 0 ? '+' : ''}{formatCurrency(log.amountChanged)}
+                </TableCell>
+                <TableCell className="text-right font-semibold">{formatCurrency(log.newBalance)}</TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                Bakiye geçmişi bulunmuyor.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}

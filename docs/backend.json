@@ -243,6 +243,47 @@
         "date",
         "lessonPrice"
       ]
+    },
+    "BalanceLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BalanceLog",
+      "description": "Represents a log of a balance change for a student.",
+      "type": "object",
+      "properties": {
+        "userId": {
+            "type": "string",
+            "description": "The ID of the user (teacher) who owns this balance log."
+        },
+        "studentId": {
+            "type": "string",
+            "description": "The ID of the student whose balance changed."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for when the balance change occurred."
+        },
+        "amountChanged": {
+            "type": "number",
+            "description": "The amount the balance changed by (positive for additions, negative for deductions)."
+        },
+        "newBalance": {
+            "type": "number",
+            "description": "The student's new balance after the change."
+        },
+        "description": {
+            "type": "string",
+            "description": "A description of the event that caused the balance change."
+        }
+      },
+      "required": [
+        "userId",
+        "studentId",
+        "date",
+        "amountChanged",
+        "newBalance",
+        "description"
+      ]
     }
   },
   "auth": {
@@ -347,6 +388,30 @@
               "description": "The unique identifier of the student."
             }
           ]
+        }
+      },
+      {
+        "path": "/users/{userId}/students/{studentId}/balanceLogs/{balanceLogId}",
+        "definition": {
+            "entityName": "BalanceLog",
+            "schema": {
+                "$ref": "#/backend/entities/BalanceLog"
+            },
+            "description": "Stores a log of balance changes for a specific student.",
+            "params": [
+                {
+                    "name": "userId",
+                    "description": "The unique identifier of the user."
+                },
+                {
+                    "name": "studentId",
+                    "description": "The unique identifier of the student."
+                },
+                {
+                    "name": "balanceLogId",
+                    "description": "The unique identifier of the balance log entry."
+                }
+            ]
         }
       },
       {

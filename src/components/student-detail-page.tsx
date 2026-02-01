@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { StudentBalanceHistory } from './student-balance-history';
 
 type StudentDetailPageProps = {
   userId: string;
@@ -68,6 +69,12 @@ export function StudentDetailPage({ userId, studentId }: StudentDetailPageProps)
     };
   }, [student, lessonLogs]);
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(amount);
+  };
 
   if (isStudentLoading || areLogsLoading) {
     return (
@@ -170,6 +177,16 @@ export function StudentDetailPage({ userId, studentId }: StudentDetailPageProps)
                 </TableBody>
               </Table>
           </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Bakiye Geçmişi</CardTitle>
+          <CardDescription>Öğrencinin tüm bakiye hareketlerinin listesi.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <StudentBalanceHistory userId={userId} studentId={studentId} formatCurrency={formatCurrency} />
+        </CardContent>
       </Card>
     </div>
   );
