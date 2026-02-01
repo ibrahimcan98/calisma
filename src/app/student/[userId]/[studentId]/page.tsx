@@ -2,15 +2,10 @@
 
 import { Header } from '@/components/header';
 import { StudentDetailPage } from '@/components/student-detail-page';
+import { useParams } from 'next/navigation';
 
-type StudentPageProps = {
-  params: {
-    userId: string;
-    studentId: string;
-  };
-};
-
-export default function StudentPage({ params }: StudentPageProps) {
+export default function StudentPage() {
+  const params = useParams<{ userId: string; studentId: string }>();
   const { userId, studentId } = params;
 
   if (!userId || !studentId) {
