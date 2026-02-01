@@ -30,7 +30,7 @@ import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { startOfMonth, subMonths, differenceInCalendarMonths } from 'date-fns';
 import { SavingsGoals } from './savings-goals';
-import { AddGoalSheet } from './add-goal-sheet';
+import { SubscriptionsPanel } from './subscriptions-panel';
 
 
 export function Dashboard() {
@@ -229,6 +229,10 @@ export function Dashboard() {
         
         <div className="pt-8">
             <SavingsGoals />
+        </div>
+
+        <div className="pt-8">
+            <SubscriptionsPanel categories={categories} />
         </div>
 
         <div className="flex items-center gap-2 mt-8">

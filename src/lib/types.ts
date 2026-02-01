@@ -28,5 +28,14 @@ export type Goal = {
   createdAt: Date;
 };
 
+export type Subscription = {
+  id: string;
+  userId: string;
+  name: string;
+  amount: number;
+  category: string;
+  frequency: 'monthly' | 'yearly';
+  startDate: Date;
+};
 
 export type Period = 'weekly' | 'monthly';

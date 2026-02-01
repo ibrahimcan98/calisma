@@ -126,6 +126,51 @@
         "currentAmount",
         "createdAt"
       ]
+    },
+    "Subscription": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Subscription",
+      "description": "Represents a recurring subscription payment.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this subscription."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the subscription (e.g., 'Netflix')."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount paid for the subscription."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the subscription."
+        },
+        "frequency": {
+          "type": "string",
+          "enum": [
+            "monthly",
+            "yearly"
+          ],
+          "description": "How often the subscription recurs."
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the subscription started or the next payment is due."
+        }
+      },
+      "required": [
+        "userId",
+        "name",
+        "amount",
+        "category",
+        "frequency",
+        "startDate"
+      ]
     }
   },
   "auth": {
@@ -188,6 +233,26 @@
             {
               "name": "goalId",
               "description": "The unique identifier of the goal."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/subscriptions/{subscriptionId}",
+        "definition": {
+          "entityName": "Subscription",
+          "schema": {
+            "$ref": "#/backend/entities/Subscription"
+          },
+          "description": "Stores individual subscriptions for a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "subscriptionId",
+              "description": "The unique identifier of the subscription."
             }
           ]
         }
