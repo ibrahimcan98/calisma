@@ -36,10 +36,9 @@ export function Dashboard() {
   const [period, setPeriod] = useState<Period>('monthly');
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
-  const [currentDate] = useState(new Date());
 
   const filteredTransactions = useMemo(() => {
-    const now = currentDate;
+    const now = new Date();
     let startDate: Date, endDate: Date;
 
     if (period === 'weekly') {
@@ -53,7 +52,7 @@ export function Dashboard() {
     return transactions
       .filter((t) => t.date >= startDate && t.date <= endDate)
       .sort((a, b) => b.date.getTime() - a.date.getTime());
-  }, [transactions, period, currentDate]);
+  }, [transactions, period]);
 
   const summary = useMemo(() => {
     return filteredTransactions.reduce(
