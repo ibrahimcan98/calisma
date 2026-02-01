@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { categories as initialCategories } from '@/lib/data';
 import type { Transaction, Category } from '@/lib/types';
 import { Header } from '@/components/header';
@@ -34,6 +34,7 @@ import { startOfMonth, subMonths, differenceInCalendarMonths } from 'date-fns';
 import { SavingsGoals } from './savings-goals';
 import { SubscriptionsPanel } from './subscriptions-panel';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
 
 
 export function Dashboard() {
@@ -44,6 +45,7 @@ export function Dashboard() {
     useState<Category[]>(initialCategories);
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
+  const [editableLastMonthSavings, setEditableLastMonthSavings] = useState('0.00');
 
   const transactionsCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -121,6 +123,10 @@ export function Dashboard() {
     };
   }, [transactions]);
   
+  useEffect(() => {
+    setEditableLastMonthSavings(stats.lastMonthSavings.toFixed(2));
+  }, [stats.lastMonthSavings]);
+
   const hasCarryOverForCurrentMonth = useMemo(() => {
     const now = new Date();
     const startOfCurrentMonth = startOfMonth(now);
@@ -156,8 +162,10 @@ export function Dashboard() {
 
   const handleCarryOver = () => {
     if (!transactionsCollectionRef || !user) return;
+    
+    const amountToAdd = parseFloat(editableLastMonthSavings);
 
-    if (stats.lastMonthSavings <= 0) {
+    if (isNaN(amountToAdd) || amountToAdd <= 0) {
       toast({
         variant: "destructive",
         title: "İşlem Başarısız",
@@ -177,7 +185,7 @@ export function Dashboard() {
 
     const carryOverTransaction = {
       type: 'Income' as 'Income',
-      amount: stats.lastMonthSavings,
+      amount: amountToAdd,
       date: new Date(),
       category: 'other',
       description: 'Geçen aydan devir',
@@ -188,7 +196,7 @@ export function Dashboard() {
 
     toast({
       title: "Başarılı!",
-      description: `${formatCurrency(stats.lastMonthSavings)} tutarı gelirinize eklendi.`,
+      description: `${formatCurrency(amountToAdd)} tutarı gelirinize eklendi.`,
     });
   };
 
@@ -289,14 +297,17 @@ export function Dashboard() {
               <PiggyBank className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(stats.lastMonthSavings)}
-              </div>
+               <Input
+                  type="number"
+                  value={editableLastMonthSavings}
+                  onChange={(e) => setEditableLastMonthSavings(e.target.value)}
+                  className="text-2xl font-bold h-auto p-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                />
               <p className="text-xs text-muted-foreground">
-                Geçen ayki gelir - gider farkı
+                Geçen ayki gelir - gider farkı (düzenlenebilir)
               </p>
             </CardContent>
-            {stats.lastMonthSavings > 0 && !hasCarryOverForCurrentMonth && (
+            {parseFloat(editableLastMonthSavings) > 0 && !hasCarryOverForCurrentMonth && (
               <CardFooter>
                   <Button className="w-full" onClick={handleCarryOver}>
                       <Plus className="mr-2 h-4 w-4" /> Gelire Ekle
