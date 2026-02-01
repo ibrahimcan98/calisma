@@ -100,6 +100,10 @@ service cloud.firestore {
       match /subscriptions/{subscriptionId} {
         allow read, write: if isOwner(userId);
       }
+
+      match /students/{studentId} {
+        allow read, write: if isOwner(userId);
+      }
     }
   }
 }

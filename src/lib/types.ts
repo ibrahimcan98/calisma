@@ -38,4 +38,12 @@ export type Subscription = {
   startDate: Date;
 };
 
+export type Student = {
+  id: string;
+  userId: string;
+  name: string;
+  paymentStatus: 'Paid' | 'Unpaid';
+  createdAt: Date;
+};
+
 export type Period = 'weekly' | 'monthly';

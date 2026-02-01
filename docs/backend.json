@@ -171,6 +171,41 @@
         "frequency",
         "startDate"
       ]
+    },
+    "Student": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Student",
+      "description": "Represents a student taking lessons.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user (teacher) who owns this student record."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name(s) of the student(s) in the group."
+        },
+        "paymentStatus": {
+          "type": "string",
+          "enum": [
+            "Paid",
+            "Unpaid"
+          ],
+          "description": "The payment status for the last lesson."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for when the student was added."
+        }
+      },
+      "required": [
+        "userId",
+        "name",
+        "paymentStatus",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -256,8 +291,28 @@
             }
           ]
         }
+      },
+      {
+        "path": "/users/{userId}/students/{studentId}",
+        "definition": {
+          "entityName": "Student",
+          "schema": {
+            "$ref": "#/backend/entities/Student"
+          },
+          "description": "Stores individual student records for a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "studentId",
+              "description": "The unique identifier of the student."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to manage user profiles securely and efficiently. The primary collection is `/users/{userId}`, which stores individual user profiles. This path-based ownership model provides excellent security and simplifies rules. This structure facilitates simple, robust, and easily debuggable security rules. There is no denormalized authorization data. No collaborative data is present in this version. Transactions and Goals are stored in a subcollection under each user to enforce ownership and for data locality."
+    "reasoning": "The Firestore structure is designed to manage user-specific data securely and efficiently under a single `/users/{userId}` document tree. This path-based ownership model provides excellent security and simplifies rules. Subcollections like transactions, goals, subscriptions, and students are nested under each user to enforce ownership and for data locality. This facilitates simple, robust, and easily debuggable security rules. There is no denormalized authorization data."
   }
 }
