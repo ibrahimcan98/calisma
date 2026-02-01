@@ -42,7 +42,8 @@ export type Student = {
   id: string;
   userId: string;
   name: string;
-  paymentStatus: 'Paid' | 'Unpaid';
+  balance: number;
+  lessonPrice: number;
   createdAt: Date;
 };
 

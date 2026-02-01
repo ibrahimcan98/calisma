@@ -184,15 +184,15 @@
         },
         "name": {
           "type": "string",
-          "description": "The name(s) of the student(s) in the group."
+          "description": "The name of the student."
         },
-        "paymentStatus": {
-          "type": "string",
-          "enum": [
-            "Paid",
-            "Unpaid"
-          ],
-          "description": "The payment status for the last lesson."
+        "balance": {
+          "type": "number",
+          "description": "The student's current financial balance. Positive is credit, negative is debt."
+        },
+        "lessonPrice": {
+          "type": "number",
+          "description": "The price of a single lesson for this student."
         },
         "createdAt": {
           "type": "string",
@@ -203,7 +203,8 @@
       "required": [
         "userId",
         "name",
-        "paymentStatus",
+        "balance",
+        "lessonPrice",
         "createdAt"
       ]
     }

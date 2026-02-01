@@ -8,7 +8,6 @@ import type { Student } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Users } from 'lucide-react';
 import {
   AlertDialog,
@@ -24,13 +23,8 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const initialStudents = [
-  'Ata, Mila, Batu',
-  'Ozan, Leo',
-  'Ozan, Selen',
-  'Beliz, Leyla',
-  'Lila',
-  'Ali, Lyla',
+const initialStudentNames = [
+  'Ata', 'Mila', 'Batu', 'Ozan', 'Leo', 'Selen', 'Beliz', 'Leyla', 'Lila', 'Ali', 'Lyla'
 ];
 
 export function LessonTracker() {
@@ -38,6 +32,9 @@ export function LessonTracker() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [newStudentName, setNewStudentName] = useState('');
+  const [newStudentLessonPrice, setNewStudentLessonPrice] = useState('');
+  const [newStudentBalance, setNewStudentBalance] = useState('');
+  const [fundsToAdd, setFundsToAdd] = useState<Record<string, string>>({});
 
   const studentsCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -53,18 +50,39 @@ export function LessonTracker() {
       createdAt: (s.createdAt as any)?.toDate() ?? new Date(),
     })).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }, [rawStudents]);
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(amount);
+  };
 
   const handleAddStudent = () => {
-    if (!studentsCollectionRef || !user || !newStudentName.trim()) return;
+    const name = newStudentName.trim();
+    const lessonPrice = parseFloat(newStudentLessonPrice);
+    const balance = parseFloat(newStudentBalance) || 0;
+
+    if (!studentsCollectionRef || !user || !name || isNaN(lessonPrice) || lessonPrice <= 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Geçersiz Giriş',
+        description: 'Lütfen geçerli bir öğrenci adı ve pozitif bir ders ücreti girin.',
+      });
+      return;
+    }
 
     addDocumentNonBlocking(studentsCollectionRef, {
-      name: newStudentName.trim(),
-      paymentStatus: 'Unpaid',
+      name,
+      lessonPrice,
+      balance,
       userId: user.uid,
       createdAt: serverTimestamp(),
     });
     setNewStudentName('');
-    toast({ title: "Öğrenci Eklendi", description: `${newStudentName} listeye eklendi.`});
+    setNewStudentLessonPrice('');
+    setNewStudentBalance('');
+    toast({ title: "Öğrenci Eklendi", description: `${name} listeye eklendi.`});
   };
 
   const handleDeleteStudent = (id: string) => {
@@ -74,20 +92,48 @@ export function LessonTracker() {
     toast({ variant: 'destructive', title: "Öğrenci Silindi", description: "Seçilen öğrenci listeden kaldırıldı."});
   };
   
-  const handleToggleStatus = (student: Student) => {
+  const handleLessonDone = (student: Student) => {
     if (!user) return;
     const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
-    const newStatus = student.paymentStatus === 'Paid' ? 'Unpaid' : 'Paid';
-    updateDocumentNonBlocking(studentRef, { paymentStatus: newStatus });
-    toast({ title: "Durum Güncellendi", description: `${student.name} durumu '${newStatus}' olarak değiştirildi.`});
+    const newBalance = student.balance - student.lessonPrice;
+    updateDocumentNonBlocking(studentRef, { balance: newBalance });
+    toast({ title: "Ders İşlendi", description: `${student.name} için bakiye güncellendi. Yeni bakiye: ${formatCurrency(newBalance)}`});
+  };
+  
+  const handleAddFunds = (student: Student) => {
+    if (!user) return;
+    const amount = parseFloat(fundsToAdd[student.id] || '0');
+
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Geçersiz Tutar',
+        description: 'Lütfen eklenecek pozitif bir tutar girin.',
+      });
+      return;
+    }
+
+    const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
+    const newBalance = student.balance + amount;
+    updateDocumentNonBlocking(studentRef, { balance: newBalance });
+    
+    // Clear input
+    setFundsToAdd(prev => ({...prev, [student.id]: ''}));
+
+    toast({ title: "Bakiye Eklendi", description: `${student.name} için bakiye güncellendi. Yeni bakiye: ${formatCurrency(newBalance)}`});
+  };
+
+  const handleFundsInputChange = (studentId: string, value: string) => {
+    setFundsToAdd(prev => ({ ...prev, [studentId]: value }));
   };
 
   const handleSeedInitialStudents = () => {
     if (!studentsCollectionRef || !user) return;
-    initialStudents.forEach(name => {
+    initialStudentNames.forEach(name => {
       addDocumentNonBlocking(studentsCollectionRef, {
         name: name,
-        paymentStatus: 'Unpaid',
+        balance: 0,
+        lessonPrice: 100, // Default price, can be edited later
         userId: user.uid,
         createdAt: serverTimestamp(),
       });
@@ -95,66 +141,76 @@ export function LessonTracker() {
     toast({ title: "Başlangıç Listesi Eklendi", description: "Öğrenciler başarıyla eklendi."});
   };
 
-  const handleResetAllToUnpaid = () => {
-     if (!user) return;
-     students.forEach(student => {
-        if (student.paymentStatus === 'Paid') {
-            const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
-            updateDocumentNonBlocking(studentRef, { paymentStatus: 'Unpaid' });
-        }
-     });
-     toast({ title: "Liste Yenilendi", description: "Tüm ödemeler 'Ödenmedi' olarak ayarlandı."});
-  }
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Ders Takibi</CardTitle>
-        <CardDescription>Öğrencilerin ders ve ödeme durumlarını buradan yönetebilirsiniz.</CardDescription>
+        <CardDescription>Öğrencilerin ders ve bakiye durumlarını buradan yönetebilirsiniz.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex gap-2">
-          <Input 
-            placeholder="Yeni öğrenci adı veya grubu"
-            value={newStudentName}
-            onChange={(e) => setNewStudentName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddStudent()}
-          />
-          <Button onClick={handleAddStudent}><Plus className="mr-2 h-4 w-4" /> Ekle</Button>
+        <div className="p-4 border rounded-lg space-y-2 bg-muted/50">
+            <h3 className="font-semibold">Yeni Öğrenci Ekle</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                <Input placeholder="Yeni öğrenci adı" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} />
+                <Input type="number" placeholder="Ders ücreti" value={newStudentLessonPrice} onChange={(e) => setNewStudentLessonPrice(e.target.value)} />
+                <Input type="number" placeholder="Başlangıç bakiye (opsiyonel)" value={newStudentBalance} onChange={(e) => setNewStudentBalance(e.target.value)} />
+                <Button onClick={handleAddStudent} className="w-full"><Plus className="mr-2 h-4 w-4" /> Ekle</Button>
+            </div>
         </div>
 
         <div className="border rounded-md">
             {students.length > 0 ? (
                 <div className="divide-y">
                     {students.map(student => (
-                        <div key={student.id} className="flex items-center p-4 gap-4">
-                            <Users className="h-5 w-5 text-muted-foreground" />
-                            <p className="flex-1 font-medium">{student.name}</p>
-                            <Badge variant={student.paymentStatus === 'Paid' ? 'secondary' : 'destructive'}>
-                                {student.paymentStatus === 'Paid' ? 'Ödendi' : 'Ödenmedi'}
-                            </Badge>
-                            <Button variant="outline" size="sm" onClick={() => handleToggleStatus(student)}>
-                                {student.paymentStatus === 'Paid' ? 'Ödenmedi İşaretle' : 'Ödendi İşaretle'}
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Bu işlem geri alınamaz. "{student.name}" öğrencisi kalıcı olarak silinecektir.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>İptal</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteStudent(student.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                        <div key={student.id} className="p-4 space-y-4 md:space-y-0 md:flex md:items-center md:gap-4">
+                            <div className="flex-1 flex items-center gap-4">
+                                <Users className="h-6 w-6 text-primary flex-shrink-0" />
+                                <div>
+                                    <p className="font-bold text-lg">{student.name}</p>
+                                    <p className="text-sm text-muted-foreground">Ders Ücreti: {formatCurrency(student.lessonPrice)}</p>
+                                </div>
+                            </div>
+                            <div className="flex-none w-full sm:w-32 text-left sm:text-center">
+                                <p className="text-sm text-muted-foreground">Bakiye</p>
+                                <p className={cn("font-bold text-xl", student.balance < 0 ? 'text-destructive' : 'text-green-600')}>
+                                    {formatCurrency(student.balance)}
+                                </p>
+                            </div>
+                            <div className="flex-1 flex flex-col sm:flex-row gap-2 items-center">
+                                <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleLessonDone(student)}>Dersi İşle</Button>
+                                <div className="flex w-full sm:w-auto gap-2">
+                                    <Input
+                                        type="number"
+                                        placeholder="Tutar"
+                                        className="min-w-0"
+                                        value={fundsToAdd[student.id] || ''}
+                                        onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleAddFunds(student)}
+                                    />
+                                    <Button className="w-full sm:w-auto" onClick={() => handleAddFunds(student)}>Bakiye Ekle</Button>
+                                </div>
+                            </div>
+                            <div className="flex-none">
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Bu işlem geri alınamaz. "{student.name}" öğrencisi kalıcı olarak silinecektir.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>İptal</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDeleteStudent(student.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -168,11 +224,6 @@ export function LessonTracker() {
             )}
             {isLoading && <p className="text-center p-12 text-muted-foreground">Öğrenciler yükleniyor...</p>}
         </div>
-        {students.length > 0 && (
-             <div className="flex justify-end">
-                <Button variant="outline" onClick={handleResetAllToUnpaid}>Yeni Hafta (Tümünü Ödenmedi Yap)</Button>
-            </div>
-        )}
       </CardContent>
     </Card>
   );
