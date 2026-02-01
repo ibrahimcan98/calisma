@@ -1,38 +1,71 @@
-import { Wallet, User } from 'lucide-react';
+'use client'; // Make it a client component
+
+import { Wallet, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useUser, useAuth } from '@/firebase';
+import Link from 'next/link';
+import { Button } from './ui/button';
+import { useRouter } from 'next/navigation';
+import { Skeleton } from './ui/skeleton';
 
 export function Header() {
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const router = useRouter();
   const avatarImage = PlaceHolderImages.find(p => p.id === 'user-avatar');
+
+  const handleSignOut = async () => {
+    await auth.signOut();
+    router.push('/login');
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 max-w-screen-2xl items-center justify-between">
-        <div className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3">
           <Wallet className="h-7 w-7 text-primary" />
           <h1 className="text-2xl font-bold text-foreground font-headline">
             FinTrack Personal
           </h1>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Avatar className="cursor-pointer h-9 w-9">
-              {avatarImage && <AvatarImage src={avatarImage.imageUrl} alt={avatarImage.description} data-ai-hint={avatarImage.imageHint} />}
-              <AvatarFallback>
-                <User />
-              </AvatarFallback>
-            </Avatar>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Log out</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        </Link>
+        
+        {isUserLoading && <Skeleton className="h-9 w-9 rounded-full" />}
+        
+        {!isUserLoading && !user && (
+          <Button asChild>
+            <Link href="/login">Giriş Yap</Link>
+          </Button>
+        )}
+
+        {!isUserLoading && user && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Avatar className="cursor-pointer h-9 w-9">
+                {avatarImage && <AvatarImage src={avatarImage.imageUrl} alt={avatarImage.description} data-ai-hint={avatarImage.imageHint} />}
+                <AvatarFallback>
+                  <User />
+                </AvatarFallback>
+              </Avatar>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                  <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" /> Gösterge Paneli</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/profile"><User className="mr-2 h-4 w-4" /> Profil</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Çıkış Yap</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </header>
   );
