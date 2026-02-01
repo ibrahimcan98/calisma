@@ -127,9 +127,8 @@ service cloud.firestore {
     // It allows a Collection Group query on all `balanceLogs` collections.
     // The query is filtered on the client by `userId`, so this rule ensures that a user 
     // can only `list` documents where the `userId` field matches their own auth UID.
-    // We also check for the existence of the `userId` field to prevent errors on old data.
     match /{path=**}/balanceLogs/{balanceLogId} {
-      allow list: if 'userId' in resource.data && resource.data.userId == request.auth.uid;
+      allow list: if resource.data.userId == request.auth.uid;
     }
   }
 }
