@@ -53,7 +53,6 @@ export function Dashboard() {
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
   const [editableLastMonthSavings, setEditableLastMonthSavings] = useState('0.00');
-  const [currency, setCurrency] = useState('TRY');
 
   const transactionsCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -162,10 +161,10 @@ export function Dashboard() {
   };
   
   const formatCurrency = (amount: number) => {
-    const locale = currency === 'TRY' ? 'tr-TR' : currency === 'USD' ? 'en-US' : 'de-DE';
+    const locale = 'de-DE';
     return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: currency,
+      currency: 'EUR',
     }).format(amount);
   };
 
@@ -337,16 +336,6 @@ export function Dashboard() {
         <div className="flex items-center gap-2 mt-8">
           <h2 className="text-2xl font-bold tracking-tight flex-1">Son İşlemler</h2>
           <div className="ml-auto flex items-center gap-2">
-            <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="w-[100px]">
-                    <SelectValue placeholder="Para Birimi" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="TRY">TRY</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                </SelectContent>
-            </Select>
             <Button variant="outline" onClick={() => setAnalysisDialogOpen(true)}>
               <Sparkles className="mr-2 h-4 w-4" />
               AI Analizi
