@@ -10,8 +10,7 @@ import {
   Circle,
   Briefcase
 } from 'lucide-react';
-import type { Category, Transaction } from '@/lib/types';
-import { startOfDay, subDays, subMonths } from 'date-fns';
+import type { Category } from '@/lib/types';
 
 export const categories: Category[] = [
   { value: 'food', label: 'Food', icon: Utensils, subCategories: [
@@ -52,79 +51,4 @@ export const categories: Category[] = [
   { value: 'gifts', label: 'Gifts', icon: Gift, subCategories: []},
   { value: 'salary', label: 'Salary', icon: Briefcase, subCategories: []},
   { value: 'other', label: 'Other', icon: Circle, subCategories: [] },
-];
-
-const today = new Date();
-
-export const initialTransactions: Transaction[] = [
-  {
-    id: '1',
-    date: startOfDay(subDays(today, 1)),
-    amount: 5000,
-    type: 'Income',
-    category: 'salary',
-    description: 'Monthly Salary',
-  },
-  {
-    id: '2',
-    date: startOfDay(subDays(today, 2)),
-    amount: 1500,
-    type: 'Expense',
-    category: 'housing',
-    subCategory: 'rent',
-    description: 'Rent Payment',
-  },
-  {
-    id: '3',
-    date: startOfDay(subDays(today, 3)),
-    amount: 75.5,
-    type: 'Expense',
-    category: 'food',
-    subCategory: 'groceries',
-    description: 'Weekly Groceries',
-  },
-  {
-    id: '4',
-    date: startOfDay(subDays(today, 4)),
-    amount: 50,
-    type: 'Expense',
-    category: 'transportation',
-    subCategory: 'gas',
-    description: 'Gasoline',
-  },
-  {
-    id: '5',
-    date: startOfDay(subDays(today, 5)),
-    amount: 14.99,
-    type: 'Expense',
-    category: 'entertainment',
-    subCategory: 'subscriptions',
-    description: 'Streaming Service',
-  },
-  {
-    id: '6',
-    date: startOfDay(subDays(today, 6)),
-    amount: 45.20,
-    type: 'Expense',
-    category: 'food',
-    subCategory: 'restaurants',
-    description: 'Dinner with friends',
-  },
-  {
-    id: '7',
-    date: startOfDay(subMonths(today, 1)),
-    amount: 5000,
-    type: 'Income',
-    category: 'salary',
-    description: 'Previous Month Salary',
-  },
-  {
-    id: '8',
-    date: startOfDay(subMonths(today, 1)),
-    amount: 1500,
-    type: 'Expense',
-    category: 'housing',
-    subCategory: 'rent',
-    description: 'Previous Month Rent',
-  },
 ];

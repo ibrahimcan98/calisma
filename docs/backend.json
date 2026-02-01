@@ -41,6 +41,55 @@
         "lastName",
         "createdAt"
       ]
+    },
+    "Transaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents a single financial transaction.",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this transaction."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time of the transaction."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the transaction."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Income",
+            "Expense"
+          ],
+          "description": "The type of transaction."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the transaction."
+        },
+        "subCategory": {
+          "type": "string",
+          "description": "The sub-category of the transaction."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the transaction."
+        }
+      },
+      "required": [
+        "userId",
+        "date",
+        "amount",
+        "type",
+        "category",
+        "description"
+      ]
     }
   },
   "auth": {
@@ -66,8 +115,28 @@
             }
           ]
         }
+      },
+      {
+        "path": "/users/{userId}/transactions/{transactionId}",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Stores individual financial transactions for a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "transactionId",
+              "description": "The unique identifier of the transaction."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to manage user profiles securely and efficiently. The primary collection is `/users/{userId}`, which stores individual user profiles. This path-based ownership model provides excellent security and simplifies rules. This structure facilitates simple, robust, and easily debuggable security rules. There is no denormalized authorization data. No collaborative data is present in this version."
+    "reasoning": "The Firestore structure is designed to manage user profiles securely and efficiently. The primary collection is `/users/{userId}`, which stores individual user profiles. This path-based ownership model provides excellent security and simplifies rules. This structure facilitates simple, robust, and easily debuggable security rules. There is no denormalized authorization data. No collaborative data is present in this version. Transactions are stored in a subcollection under each user to enforce ownership and for data locality."
   }
 }

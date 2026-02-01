@@ -1,10 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import {
-  initialTransactions,
-  categories as initialCategories,
-} from '@/lib/data';
+import { categories as initialCategories } from '@/lib/data';
 import type { Transaction, Category } from '@/lib/types';
 import { Header } from '@/components/header';
 import {
@@ -25,14 +22,33 @@ import { Button } from '@/components/ui/button';
 import { TransactionsTable } from './transactions-table';
 import { AddTransactionSheet } from './add-transaction-sheet';
 import { ExpenditureAnalysisDialog } from './expenditure-analysis-dialog';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export function Dashboard() {
-  const [transactions, setTransactions] =
-    useState<Transaction[]>(initialTransactions);
+  const { user } = useUser();
+  const firestore = useFirestore();
   const [categories, setCategories] =
     useState<Category[]>(initialCategories);
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
+
+  const transactionsCollectionRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, 'users', user.uid, 'transactions');
+  }, [firestore, user]);
+
+  const { data: rawTransactions } = useCollection<Omit<Transaction, 'id'>>(transactionsCollectionRef);
+
+  const transactions = useMemo(() => {
+    if (!rawTransactions) return [];
+    return rawTransactions.map(t => ({
+      ...t,
+      // Firestore returns timestamps, convert them to JS Date objects
+      date: (t.date as any).toDate(),
+    }));
+  }, [rawTransactions]);
 
   // Show all transactions, sorted by most recent
   const sortedTransactions = useMemo(() => {
@@ -56,10 +72,9 @@ export function Dashboard() {
   }, [transactions]);
   
   const handleAddTransaction = (transaction: Omit<Transaction, 'id'>) => {
-    setTransactions((prev) => [
-      ...prev,
-      { ...transaction, id: crypto.randomUUID() },
-    ]);
+    if (!transactionsCollectionRef) return;
+    // `date` is a JS Date object from the form, Firestore will convert it to a Timestamp
+    addDocumentNonBlocking(transactionsCollectionRef, transaction);
   };
 
   const handleAddCategory = (category: Omit<Category, 'icon'>): Category => {
