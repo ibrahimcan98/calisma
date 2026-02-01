@@ -3,14 +3,16 @@
 import {
   generateSpendingAnalysis,
   type SpendingAnalysisInput,
+  type SpendingAnalysisOutput,
 } from '@/ai/flows/generate-spending-analysis';
 import type { Transaction } from '@/lib/types';
 
-export async function getSpendingAnalysis(transactions: Transaction[]) {
+export async function getSpendingAnalysis(transactions: Transaction[]): Promise<SpendingAnalysisOutput> {
   if (transactions.length === 0) {
     return {
-        analysis: "No transaction data available for this period.",
-        suggestions: "Add some transactions to get started with your spending analysis."
+        monthlyReport: "Bu dönem için analiz edilecek işlem verisi bulunmuyor.",
+        savingsScore: 0,
+        suggestions: "Harcama analizinize başlamak için birkaç işlem ekleyin."
     };
   }
 
