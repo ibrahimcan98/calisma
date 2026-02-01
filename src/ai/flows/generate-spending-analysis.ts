@@ -13,16 +13,16 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const SpendingAnalysisInputSchema = z.object({
-  transactions: z.string().describe('A string containing a list of financial transactions, with each transaction on a new line.'),
+  transactions: z.string().describe('Her biri yeni bir satırda olan finansal işlemlerin bir listesini içeren bir metin.'),
 });
 export type SpendingAnalysisInput = z.infer<typeof SpendingAnalysisInputSchema>;
 
 const SpendingAnalysisOutputSchema = z.object({
-  monthlyReport: z.string().describe('A concise monthly financial summary report, highlighting key trends, income vs. expenses, and top spending categories.'),
-  savingsScore: z.number().min(0).max(100).describe('A savings score from 0 to 100, where 100 is excellent. The score should be based on the income-to-expense ratio, saving consistency, and spending habits.'),
+  monthlyReport: z.string().describe('Ana eğilimleri, gelir ve giderleri ve en çok harcama yapılan kategorileri vurgulayan kısa bir aylık finansal özet raporu.'),
+  savingsScore: z.number().min(0).max(100).describe("0 ile 100 arasında, 100'ün mükemmel olduğu bir tasarruf puanı. Puan, gelir-gider oranına, tasarruf tutarlılığına ve harcama alışkanlıklarına dayanmalıdır."),
   suggestions: z
     .string()
-    .describe('Specific, actionable suggestions for improving spending habits.'),
+    .describe('Harcama alışkanlıklarını iyileştirmek için özel, eyleme geçirilebilir öneriler.'),
 });
 export type SpendingAnalysisOutput = z.infer<typeof SpendingAnalysisOutputSchema>;
 
@@ -34,15 +34,15 @@ const prompt = ai.definePrompt({
   name: 'spendingAnalysisPrompt',
   input: {schema: SpendingAnalysisInputSchema},
   output: {schema: SpendingAnalysisOutputSchema},
-  prompt: `You are a personal finance advisor. Analyze the following list of financial transactions.
+  prompt: `Sen bir kişisel finans danışmanısın. Aşağıdaki finansal işlem listesini analiz et.
 
-Based on this data, you will generate a comprehensive financial report.
+Bu verilere dayanarak kapsamlı bir finansal rapor oluşturacaksın.
 
-1.  **Monthly Financial Summary Report:** Create a concise summary of the financial activity. Highlight key trends, the relationship between income and expenses, and identify the top spending categories.
-2.  **Savings Score:** Calculate a "Savings Score" on a scale of 0 to 100. A score of 100 represents excellent financial health. Base this score on factors like the income-to-expense ratio, consistency in savings (if identifiable), and overall spending habits reflected in the data. A higher ratio of income to expenses should result in a higher score.
-3.  **Actionable Suggestions:** Provide specific, actionable suggestions for improving spending habits and increasing the savings score.
+1.  **Aylık Finansal Özet Raporu:** Finansal faaliyetin kısa bir özetini oluştur. Ana eğilimleri, gelir ve giderler arasındaki ilişkiyi vurgula ve en çok harcama yapılan kategorileri belirle.
+2.  **Tasarruf Skoru:** 0 ile 100 arasında bir "Tasarruf Skoru" hesapla. 100 puan mükemmel finansal sağlığı temsil eder. Bu puanı, gelir-gider oranı, tasarruf tutarlılığı (verilerden anlaşılıyorsa) ve verilerdeki genel harcama alışkanlıkları gibi faktörlere dayandır. Daha yüksek bir gelir-gider oranı daha yüksek bir puanla sonuçlanmalıdır. Bu skor SADECE bir sayı olmalıdır.
+3.  **Uygulanabilir Öneriler:** Harcama alışkanlıklarını iyileştirmek ve tasarruf skorunu artırmak için özel, eyleme geçirilebilir öneriler sun.
 
-Here is the transaction data:
+İşlem verileri aşağıdadır:
 {{{transactions}}}`,
 });
 
