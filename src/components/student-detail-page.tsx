@@ -185,7 +185,7 @@ export function StudentDetailPage({ userId, studentId }: StudentDetailPageProps)
           <CardDescription>Öğrencinin tüm bakiye hareketlerinin listesi.</CardDescription>
         </CardHeader>
         <CardContent>
-          <StudentBalanceHistory userId={userId} studentId={studentId} formatCurrency={formatCurrency} />
+          <StudentBalanceHistory student={student} formatCurrency={formatCurrency} />
         </CardContent>
       </Card>
     </div>

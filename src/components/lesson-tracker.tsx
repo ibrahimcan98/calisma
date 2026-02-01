@@ -327,47 +327,6 @@ export function LessonTracker() {
         </Card>
       </div>
 
-      {/*
-      <Card>
-        <CardHeader>
-            <CardTitle>Son Bakiye Hareketleri</CardTitle>
-            <CardDescription>Öğrencilerin hesaplarına yapılan son bakiye eklemeleri ve ders işlemeleri.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            {areAllLogsLoading ? (
-                <p className="text-center p-8 text-muted-foreground">Yükleniyor...</p>
-            ) : allBalanceLogs.length > 0 ? (
-                <ul className="space-y-4">
-                    {allBalanceLogs.map(log => (
-                        <li key={log.id} className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
-                            <div className="flex items-center gap-3">
-                                <div className={cn("flex h-8 w-8 items-center justify-center rounded-full", log.amountChanged > 0 ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50')}>
-                                    {log.amountChanged > 0 ? 
-                                        <Wallet className="h-4 w-4 text-green-600" /> :
-                                        <Activity className="h-4 w-4 text-red-600" />
-                                    }
-                                </div>
-                                <div>
-                                    <p className="font-semibold">{log.studentName}</p>
-                                    <p className="text-sm text-muted-foreground">{log.description}</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <p className={cn("font-bold", log.amountChanged > 0 ? 'text-green-600' : 'text-red-600')}>
-                                    {log.amountChanged > 0 ? '+' : ''}{formatCurrency(log.amountChanged)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">{format(log.date, 'd MMM, HH:mm', { locale: tr })}</p>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            ) : (
-                <p className="text-center p-8 text-muted-foreground">Henüz bakiye hareketi yok.</p>
-            )}
-        </CardContent>
-      </Card>
-      */}
-
       <Card>
         <CardHeader>
           <CardTitle>Öğrenci Yönetimi</CardTitle>
@@ -417,11 +376,9 @@ export function LessonTracker() {
                           </p>
                       </div>
                       <div className="hidden lg:flex flex-1 flex-row gap-2 items-center" onClick={(e) => e.stopPropagation()}>
-                          <div onClick={() => handleLessonDone(student)}>
-                              <Button asChild variant="outline" className="w-full sm:w-auto">
-                                <div>Dersi İşle</div>
-                              </Button>
-                          </div>
+                          <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleLessonDone(student)}>
+                            Dersi İşle
+                          </Button>
                           <div className="flex w-full sm:w-auto gap-2">
                               <Input
                                   type="number"
@@ -431,20 +388,16 @@ export function LessonTracker() {
                                   onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
                                   onKeyDown={(e) => e.key === 'Enter' && handleAddFunds(student)}
                               />
-                               <div onClick={() => handleAddFunds(student)}>
-                                  <Button asChild className="w-full sm:w-auto">
-                                    <div>Ders Ekle</div>
-                                  </Button>
-                              </div>
+                              <Button className="w-full sm:w-auto" onClick={() => handleAddFunds(student)}>
+                                Ders Ekle
+                              </Button>
                           </div>
                       </div>
                       <div className="flex-none ml-2" onClick={(e) => e.stopPropagation()}>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                               <Button asChild variant="ghost" size="icon">
-                                <div>
+                               <Button variant="ghost" size="icon">
                                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                                </div>
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
@@ -477,7 +430,7 @@ export function LessonTracker() {
                               <Button className="w-full" onClick={() => handleAddFunds(student)}>Ders Ekle</Button>
                           </div>
                       </div>
-                      {user && <StudentBalanceHistory userId={user.uid} studentId={student.id} formatCurrency={formatCurrency} />}
+                      {user && <StudentBalanceHistory student={student} formatCurrency={formatCurrency} />}
                     </AccordionContent>
                   </div>
                 </AccordionItem>
