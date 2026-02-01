@@ -6,7 +6,7 @@ import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Student, LessonLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Users, Wallet } from 'lucide-react';
 import {
@@ -215,6 +215,30 @@ export function LessonTracker() {
     toast({ title: "Başlangıç Listesi Eklendi", description: "Öğrenciler başarıyla eklendi."});
   };
 
+  const handleResetWeeklyEarnings = () => {
+    if (!user || !lessonLogs) return;
+    const now = new Date();
+    const currentWeekLogs = lessonLogs.filter(log => isSameWeek(log.date, now, { weekStartsOn: 1 }));
+
+    if (currentWeekLogs.length === 0) {
+      toast({
+        title: "Sıfırlanacak Kayıt Yok",
+        description: "Bu hafta için zaten ders kaydı bulunmuyor.",
+      });
+      return;
+    }
+    
+    currentWeekLogs.forEach(log => {
+      const logRef = doc(firestore, 'users', user.uid, 'lessonLogs', log.id);
+      deleteDocumentNonBlocking(logRef);
+    });
+
+    toast({
+      title: "Haftalık Kazanç Sıfırlandı",
+      description: `Bu haftaya ait ${currentWeekLogs.length} ders kaydı silindi.`,
+    });
+  };
+
   return (
     <div className="space-y-8">
       <div className="grid gap-4 md:grid-cols-2">
@@ -227,6 +251,25 @@ export function LessonTracker() {
             <div className="text-2xl font-bold">{formatCurrency(weeklyStats.weeklyEarnings)}</div>
             <p className="text-xs text-muted-foreground">Bu hafta tamamlanan derslerin toplamı</p>
           </CardContent>
+           <CardFooter>
+             <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full">Haftalık Kazancı Sıfırla</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Haftalık Kazancı Sıfırla?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Bu işlem geri alınamaz. Bu haftaya ait tüm ders kayıtları kalıcı olarak silinecek ve haftalık kazanç sıfırlanacaktır. Emin misiniz?
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleResetWeeklyEarnings} className="bg-destructive hover:bg-destructive/90">Evet, Sıfırla</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+          </CardFooter>
         </Card>
       </div>
       <Card>
