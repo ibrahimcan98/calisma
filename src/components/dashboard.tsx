@@ -17,6 +17,9 @@ import {
   DollarSign,
   Plus,
   Sparkles,
+  CalendarDays,
+  History,
+  Scale,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TransactionsTable } from './transactions-table';
@@ -25,6 +28,7 @@ import { ExpenditureAnalysisDialog } from './expenditure-analysis-dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { startOfMonth, subMonths, differenceInCalendarMonths } from 'date-fns';
 
 export function Dashboard() {
   const { user } = useUser();
@@ -55,20 +59,52 @@ export function Dashboard() {
     return [...transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [transactions]);
 
-  const summary = useMemo(() => {
-    // Calculate summary based on ALL transactions
-    return transactions.reduce(
-      (acc, transaction) => {
-        if (transaction.type === 'Income') {
-          acc.income += transaction.amount;
-        } else {
-          acc.expenses += transaction.amount;
+  const stats = useMemo(() => {
+    if (transactions.length === 0) {
+      return {
+        balance: 0,
+        totalIncome: 0,
+        totalExpenses: 0,
+        currentMonthExpenses: 0,
+        lastMonthExpenses: 0,
+        averageMonthlyExpense: 0,
+      };
+    }
+
+    const now = new Date();
+    const startOfCurrentMonth = startOfMonth(now);
+    const startOfLastMonth = startOfMonth(subMonths(now, 1));
+    
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    let currentMonthExpenses = 0;
+    let lastMonthExpenses = 0;
+
+    for (const t of transactions) {
+        if (t.type === 'Income') {
+            totalIncome += t.amount;
+        } else { // Expense
+            totalExpenses += t.amount;
+            if (t.date >= startOfCurrentMonth) {
+                currentMonthExpenses += t.amount;
+            } else if (t.date >= startOfLastMonth && t.date < startOfCurrentMonth) {
+                lastMonthExpenses += t.amount;
+            }
         }
-        acc.balance = acc.income - acc.expenses;
-        return acc;
-      },
-      { income: 0, expenses: 0, balance: 0 }
-    );
+    }
+
+    const oldestTransaction = transactions.reduce((earliest, t) => earliest.date > t.date ? t : earliest);
+    const totalMonths = differenceInCalendarMonths(now, oldestTransaction.date) + 1;
+    const averageMonthlyExpense = totalExpenses / (totalMonths > 0 ? totalMonths : 1);
+
+    return {
+      balance: totalIncome - totalExpenses,
+      totalIncome,
+      totalExpenses,
+      currentMonthExpenses,
+      lastMonthExpenses,
+      averageMonthlyExpense,
+    };
   }, [transactions]);
   
   const handleAddTransaction = (transaction: Omit<Transaction, 'id'>) => {
@@ -94,7 +130,7 @@ export function Dashboard() {
     <div className="flex min-h-screen w-full flex-col">
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Toplam Gelir</CardTitle>
@@ -102,7 +138,7 @@ export function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(summary.income)}
+                {formatCurrency(stats.totalIncome)}
               </div>
               <p className="text-xs text-muted-foreground">
                 Tüm zamanlar
@@ -118,7 +154,7 @@ export function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(summary.expenses)}
+                {formatCurrency(stats.totalExpenses)}
               </div>
               <p className="text-xs text-muted-foreground">
                 Tüm zamanlar
@@ -132,10 +168,52 @@ export function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(summary.balance)}
+                {formatCurrency(stats.balance)}
               </div>
               <p className="text-xs text-muted-foreground">
                 Toplam Gelir - Toplam Gider
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Bu Ayki Gider</CardTitle>
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(stats.currentMonthExpenses)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Bu ayki toplam harcama
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Geçen Ayki Gider</CardTitle>
+              <History className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(stats.lastMonthExpenses)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Geçen ayki toplam harcama
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ortalama Aylık Gider</CardTitle>
+              <Scale className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(stats.averageMonthlyExpense)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Hesaplanan aylık ortalama
               </p>
             </CardContent>
           </Card>
