@@ -207,6 +207,42 @@
         "lessonPrice",
         "createdAt"
       ]
+    },
+    "LessonLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LessonLog",
+      "description": "Represents a log of a completed lesson for a student.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user (teacher) who owns this lesson log."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "The ID of the student who took the lesson."
+        },
+        "studentName": {
+            "type": "string",
+            "description": "The name of the student (denormalized)."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for when the lesson was completed."
+        },
+        "lessonPrice": {
+          "type": "number",
+          "description": "The price of the completed lesson."
+        }
+      },
+      "required": [
+        "userId",
+        "studentId",
+        "studentName",
+        "date",
+        "lessonPrice"
+      ]
     }
   },
   "auth": {
@@ -309,6 +345,26 @@
             {
               "name": "studentId",
               "description": "The unique identifier of the student."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/lessonLogs/{lessonLogId}",
+        "definition": {
+          "entityName": "LessonLog",
+          "schema": {
+            "$ref": "#/backend/entities/LessonLog"
+          },
+          "description": "Stores logs of completed lessons for a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "lessonLogId",
+              "description": "The unique identifier of the lesson log."
             }
           ]
         }

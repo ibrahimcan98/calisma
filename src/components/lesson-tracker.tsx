@@ -4,11 +4,11 @@ import { useState, useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import type { Student } from '@/lib/types';
+import type { Student, LessonLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Users } from 'lucide-react';
+import { Plus, Trash2, Users, Wallet } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,8 +20,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { startOfWeek, endOfWeek, format, isSameWeek } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 const initialStudentNames = [
   'Ata', 'Mila', 'Batu', 'Ozan', 'Leo', 'Selen', 'Beliz', 'Leyla', 'Lila', 'Ali', 'Lyla'
@@ -41,7 +49,13 @@ export function LessonTracker() {
     return collection(firestore, 'users', user.uid, 'students');
   }, [firestore, user]);
 
-  const { data: rawStudents, isLoading } = useCollection<Omit<Student, 'id'>>(studentsCollectionRef);
+  const lessonLogsCollectionRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, 'users', user.uid, 'lessonLogs');
+  }, [firestore, user]);
+
+  const { data: rawStudents, isLoading: isStudentsLoading } = useCollection<Omit<Student, 'id'>>(studentsCollectionRef);
+  const { data: rawLessonLogs } = useCollection<Omit<LessonLog, 'id'>>(lessonLogsCollectionRef);
 
   const students = useMemo(() => {
     if (!rawStudents) return [];
@@ -51,12 +65,60 @@ export function LessonTracker() {
     })).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }, [rawStudents]);
   
+  const lessonLogs = useMemo(() => {
+    if (!rawLessonLogs) return [];
+    return rawLessonLogs.map(l => ({
+      ...l,
+      date: (l.date as any)?.toDate() ?? new Date(),
+    })).sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [rawLessonLogs]);
+
+  const weeklyStats = useMemo(() => {
+    const now = new Date();
+    const currentWeekLogs = lessonLogs.filter(log => isSameWeek(log.date, now, { weekStartsOn: 1 }));
+    const weeklyEarnings = currentWeekLogs.reduce((sum, log) => sum + log.lessonPrice, 0);
+
+    const logsByWeek = lessonLogs.reduce<Record<string, { lessons: LessonLog[], totalEarnings: number, startDate: Date }>>((acc, log) => {
+        const weekStart = startOfWeek(log.date, { weekStartsOn: 1 });
+        const weekKey = format(weekStart, 'yyyy-MM-dd');
+        
+        if (!acc[weekKey]) {
+            acc[weekKey] = {
+                lessons: [],
+                totalEarnings: 0,
+                startDate: weekStart,
+            };
+        }
+        acc[weekKey].lessons.push(log);
+        acc[weekKey].totalEarnings += log.lessonPrice;
+        return acc;
+    }, {});
+    
+    const sortedWeeks = Object.keys(logsByWeek).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    return { weeklyEarnings, logsByWeek, sortedWeeks };
+  }, [lessonLogs]);
+  
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('de-DE', {
       style: 'currency',
       currency: 'EUR',
     }).format(amount);
   };
+  
+  const getRemainingLessonsText = (student: Student): string => {
+      if (!student.lessonPrice || student.lessonPrice <= 0) {
+          return "Ders ücreti tanımsız";
+      }
+      const remaining = student.balance / student.lessonPrice;
+      if (remaining >= 0) {
+          const fullLessons = Math.floor(remaining);
+          return `${fullLessons} ders`;
+      } else {
+          return `${Math.ceil(Math.abs(remaining))} ders borçlu`;
+      }
+  };
+
 
   const handleAddStudent = () => {
     const name = newStudentName.trim();
@@ -94,11 +156,21 @@ export function LessonTracker() {
   };
   
   const handleLessonDone = (student: Student) => {
-    if (!user) return;
+    if (!user || !lessonLogsCollectionRef) return;
     const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
     const newBalance = student.balance - student.lessonPrice;
+    
     updateDocumentNonBlocking(studentRef, { balance: newBalance });
-    toast({ title: "Ders İşlendi", description: `${student.name} için bakiye güncellendi. Yeni bakiye: ${formatCurrency(newBalance)}`});
+
+    addDocumentNonBlocking(lessonLogsCollectionRef, {
+        userId: user.uid,
+        studentId: student.id,
+        studentName: student.name,
+        date: new Date(),
+        lessonPrice: student.lessonPrice,
+    });
+    
+    toast({ title: "Ders İşlendi", description: `${student.name} için bakiye güncellendi.`});
   };
   
   const handleAddFunds = (student: Student) => {
@@ -118,10 +190,9 @@ export function LessonTracker() {
     const newBalance = student.balance + amount;
     updateDocumentNonBlocking(studentRef, { balance: newBalance });
     
-    // Clear input
     setFundsToAdd(prev => ({...prev, [student.id]: ''}));
 
-    toast({ title: "Bakiye Eklendi", description: `${student.name} için bakiye güncellendi. Yeni bakiye: ${formatCurrency(newBalance)}`});
+    toast({ title: "Bakiye Eklendi", description: `${student.name} için bakiye güncellendi.`});
   };
 
   const handleFundsInputChange = (studentId: string, value: string) => {
@@ -134,7 +205,7 @@ export function LessonTracker() {
       addDocumentNonBlocking(studentsCollectionRef, {
         name: name,
         balance: 0,
-        lessonPrice: 100, // Default price, can be edited later
+        lessonPrice: 100,
         userId: user.uid,
         createdAt: serverTimestamp(),
       });
@@ -143,89 +214,144 @@ export function LessonTracker() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Ders Takibi</CardTitle>
-        <CardDescription>Öğrencilerin ders ve bakiye durumlarını buradan yönetebilirsiniz.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="p-4 border rounded-lg space-y-2 bg-muted/50">
-            <h3 className="font-semibold">Yeni Öğrenci Ekle</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                <Input placeholder="Yeni öğrenci adı" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} />
-                <Input type="number" placeholder="Ders ücreti" value={newStudentLessonPrice} onChange={(e) => setNewStudentLessonPrice(e.target.value)} />
-                <Input type="number" placeholder="Başlangıç ders sayısı (opsiyonel)" value={newStudentBalance} onChange={(e) => setNewStudentBalance(e.target.value)} />
-                <Button onClick={handleAddStudent} className="w-full"><Plus className="mr-2 h-4 w-4" /> Ekle</Button>
-            </div>
-        </div>
+    <div className="space-y-8">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Bu Haftalık Kazanç</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(weeklyStats.weeklyEarnings)}</div>
+            <p className="text-xs text-muted-foreground">Bu hafta tamamlanan derslerin toplamı</p>
+          </CardContent>
+        </Card>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Öğrenci Yönetimi</CardTitle>
+          <CardDescription>Öğrencilerin ders ve bakiye durumlarını buradan yönetebilirsiniz.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="p-4 border rounded-lg space-y-2 bg-muted/50">
+              <h3 className="font-semibold">Yeni Öğrenci Ekle</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <Input placeholder="Yeni öğrenci adı" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} />
+                  <Input type="number" placeholder="Ders ücreti" value={newStudentLessonPrice} onChange={(e) => setNewStudentLessonPrice(e.target.value)} />
+                  <Input type="number" placeholder="Başlangıç ders sayısı (opsiyonel)" value={newStudentBalance} onChange={(e) => setNewStudentBalance(e.target.value)} />
+                  <Button onClick={handleAddStudent} className="w-full"><Plus className="mr-2 h-4 w-4" /> Ekle</Button>
+              </div>
+          </div>
 
-        <div className="border rounded-md">
-            {students.length > 0 ? (
-                <div className="divide-y">
-                    {students.map(student => (
-                        <div key={student.id} className="p-4 space-y-4 md:space-y-0 md:flex md:items-center md:gap-4">
-                            <div className="flex-1 flex items-center gap-4">
-                                <Users className="h-6 w-6 text-primary flex-shrink-0" />
-                                <div>
-                                    <p className="font-bold text-lg">{student.name}</p>
-                                    <p className="text-sm text-muted-foreground">Ders Ücreti: {formatCurrency(student.lessonPrice)}</p>
-                                </div>
-                            </div>
-                            <div className="flex-none w-full sm:w-32 text-left sm:text-center">
-                                <p className="text-sm text-muted-foreground">Bakiye</p>
-                                <p className={cn("font-bold text-xl", student.balance < 0 ? 'text-destructive' : 'text-green-600')}>
-                                    {formatCurrency(student.balance)}
-                                </p>
-                            </div>
-                            <div className="flex-1 flex flex-col sm:flex-row gap-2 items-center">
-                                <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleLessonDone(student)}>Dersi İşle</Button>
-                                <div className="flex w-full sm:w-auto gap-2">
-                                    <Input
-                                        type="number"
-                                        placeholder="Tutar"
-                                        className="min-w-0"
-                                        value={fundsToAdd[student.id] || ''}
-                                        onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleAddFunds(student)}
-                                    />
-                                    <Button className="w-full sm:w-auto" onClick={() => handleAddFunds(student)}>Bakiye Ekle</Button>
-                                </div>
-                            </div>
-                            <div className="flex-none">
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Bu işlem geri alınamaz. "{student.name}" öğrencisi kalıcı olarak silinecektir.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>İptal</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDeleteStudent(student.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : !isLoading && (
-                <div className="text-center p-12">
-                    <p className="text-muted-foreground mb-4">Henüz öğrenci eklenmemiş.</p>
-                    <Button onClick={handleSeedInitialStudents}>
-                        Başlangıç Listesini Ekle
-                    </Button>
-                </div>
+          <div className="border rounded-md">
+              {students.length > 0 ? (
+                  <div className="divide-y">
+                      {students.map(student => (
+                          <div key={student.id} className="p-4 space-y-4 md:space-y-0 md:flex md:items-center md:gap-4">
+                              <div className="flex-1 flex items-center gap-4">
+                                  <Users className="h-6 w-6 text-primary flex-shrink-0" />
+                                  <div>
+                                      <p className="font-bold text-lg">{student.name}</p>
+                                      <p className="text-sm text-muted-foreground">Ders Ücreti: {formatCurrency(student.lessonPrice)}</p>
+                                  </div>
+                              </div>
+                              <div className="flex-none w-full sm:w-32 text-left sm:text-center">
+                                  <p className="text-sm text-muted-foreground">Kalan Ders</p>
+                                  <p className={cn("font-bold text-xl", student.balance < 0 ? 'text-destructive' : 'text-green-600')}>
+                                      {getRemainingLessonsText(student)}
+                                  </p>
+                              </div>
+                              <div className="flex-1 flex flex-col sm:flex-row gap-2 items-center">
+                                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleLessonDone(student)}>Dersi İşle</Button>
+                                  <div className="flex w-full sm:w-auto gap-2">
+                                      <Input
+                                          type="number"
+                                          placeholder="Tutar"
+                                          className="min-w-0"
+                                          value={fundsToAdd[student.id] || ''}
+                                          onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
+                                          onKeyDown={(e) => e.key === 'Enter' && handleAddFunds(student)}
+                                      />
+                                      <Button className="w-full sm:w-auto" onClick={() => handleAddFunds(student)}>Bakiye Ekle</Button>
+                                  </div>
+                              </div>
+                              <div className="flex-none">
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="icon">
+                                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Bu işlem geri alınamaz. "{student.name}" öğrencisi kalıcı olarak silinecektir.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteStudent(student.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+              ) : !isStudentsLoading && (
+                  <div className="text-center p-12">
+                      <p className="text-muted-foreground mb-4">Henüz öğrenci eklenmemiş.</p>
+                      <Button onClick={handleSeedInitialStudents}>
+                          Başlangıç Listesini Ekle
+                      </Button>
+                  </div>
+              )}
+              {isStudentsLoading && <p className="text-center p-12 text-muted-foreground">Öğrenciler yükleniyor...</p>}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+            <CardTitle>Ders Geçmişi</CardTitle>
+            <CardDescription>Tamamlanan dersleri hafta hafta görüntüleyin.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            {lessonLogs.length > 0 ? (
+                <Accordion type="single" collapsible className="w-full">
+                    {weeklyStats.sortedWeeks.map(weekKey => {
+                        const weekData = weeklyStats.logsByWeek[weekKey];
+                        const weekEnd = endOfWeek(weekData.startDate, { weekStartsOn: 1 });
+                        const weekLabel = `${format(weekData.startDate, 'd MMM', { locale: tr })} - ${format(weekEnd, 'd MMM yyyy', { locale: tr })}`;
+                        
+                        return (
+                            <AccordionItem value={weekKey} key={weekKey}>
+                                <AccordionTrigger>
+                                    <div className="flex justify-between w-full pr-4">
+                                        <span>{weekLabel}</span>
+                                        <span className="font-semibold text-primary">{formatCurrency(weekData.totalEarnings)}</span>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <ul className="space-y-2 pl-2">
+                                        {weekData.lessons.map(log => (
+                                            <li key={log.id} className="flex justify-between items-center text-sm">
+                                                <span>{log.studentName}</span>
+                                                <span className="text-muted-foreground">{format(log.date, 'eeee, HH:mm', { locale: tr })}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </AccordionContent>
+                            </AccordionItem>
+                        )
+                    })}
+                </Accordion>
+            ) : (
+                <p className="text-muted-foreground text-center py-8">Henüz işlenmiş ders kaydı yok.</p>
             )}
-            {isLoading && <p className="text-center p-12 text-muted-foreground">Öğrenciler yükleniyor...</p>}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

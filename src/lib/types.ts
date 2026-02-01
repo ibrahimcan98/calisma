@@ -47,4 +47,13 @@ export type Student = {
   createdAt: Date;
 };
 
+export type LessonLog = {
+    id: string;
+    userId: string;
+    studentId: string;
+    studentName: string;
+    date: Date;
+    lessonPrice: number;
+};
+
 export type Period = 'weekly' | 'monthly';
