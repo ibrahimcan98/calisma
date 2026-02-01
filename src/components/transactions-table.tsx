@@ -8,7 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Trash2 } from 'lucide-react';
 import type { Category, Transaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -16,10 +17,15 @@ import { format } from 'date-fns';
 type TransactionsTableProps = {
   transactions: Transaction[];
   categories: Category[];
+  onDeleteTransaction: (id: string) => void;
 };
 
-export function TransactionsTable({ transactions, categories }: TransactionsTableProps) {
-  const categoryMap = new Map(categories.map(c => [c.value, c]));
+export function TransactionsTable({
+  transactions,
+  categories,
+  onDeleteTransaction,
+}: TransactionsTableProps) {
+  const categoryMap = new Map(categories.map((c) => [c.value, c]));
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -33,10 +39,15 @@ export function TransactionsTable({ transactions, categories }: TransactionsTabl
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[200px] hidden md:table-cell">Category</TableHead>
+            <TableHead className="w-[200px] hidden md:table-cell">
+              Category
+            </TableHead>
             <TableHead>Description</TableHead>
             <TableHead className="text-right">Amount</TableHead>
-            <TableHead className="text-right hidden sm:table-cell">Date</TableHead>
+            <TableHead className="text-right hidden sm:table-cell">
+              Date
+            </TableHead>
+            <TableHead className="w-[50px] text-right"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -50,18 +61,24 @@ export function TransactionsTable({ transactions, categories }: TransactionsTabl
                   <TableCell className="hidden md:table-cell">
                     <div className="flex items-center gap-2">
                       {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
-                      <span className="font-medium">{category?.label ?? transaction.category}</span>
+                      <span className="font-medium">
+                        {category?.label ?? transaction.category}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-start md:items-center gap-3">
-                        {Icon && <Icon className="h-8 w-8 text-muted-foreground md:hidden flex-shrink-0 mt-1" />}
-                        <div>
-                            <p className="font-medium text-foreground">{transaction.description}</p>
-                            <p className="text-sm text-muted-foreground md:hidden">
-                                {category?.label ?? transaction.category}
-                            </p>
-                        </div>
+                      {Icon && (
+                        <Icon className="h-8 w-8 text-muted-foreground md:hidden flex-shrink-0 mt-1" />
+                      )}
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {transaction.description}
+                        </p>
+                        <p className="text-sm text-muted-foreground md:hidden">
+                          {category?.label ?? transaction.category}
+                        </p>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell
@@ -78,12 +95,24 @@ export function TransactionsTable({ transactions, categories }: TransactionsTabl
                   <TableCell className="text-right hidden sm:table-cell">
                     {format(transaction.date, 'MMM d, yyyy')}
                   </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDeleteTransaction(transaction.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">
+                        Delete transaction
+                      </span>
+                    </Button>
+                  </TableCell>
                 </TableRow>
               );
             })
           ) : (
             <TableRow>
-              <TableCell colSpan={4} className="h-24 text-center">
+              <TableCell colSpan={5} className="h-24 text-center">
                 No transactions for this period.
               </TableCell>
             </TableRow>

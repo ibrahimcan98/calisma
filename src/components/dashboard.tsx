@@ -26,8 +26,8 @@ import { TransactionsTable } from './transactions-table';
 import { AddTransactionSheet } from './add-transaction-sheet';
 import { ExpenditureAnalysisDialog } from './expenditure-analysis-dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { startOfMonth, subMonths, differenceInCalendarMonths } from 'date-fns';
 
 export function Dashboard() {
@@ -111,6 +111,12 @@ export function Dashboard() {
     if (!transactionsCollectionRef) return;
     // `date` is a JS Date object from the form, Firestore will convert it to a Timestamp
     addDocumentNonBlocking(transactionsCollectionRef, transaction);
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    if (!user || !firestore) return;
+    const transactionRef = doc(firestore, 'users', user.uid, 'transactions', id);
+    deleteDocumentNonBlocking(transactionRef);
   };
 
   const handleAddCategory = (category: Omit<Category, 'icon'>): Category => {
@@ -232,7 +238,11 @@ export function Dashboard() {
           </div>
         </div>
 
-        <TransactionsTable transactions={sortedTransactions} categories={categories} />
+        <TransactionsTable
+          transactions={sortedTransactions}
+          categories={categories}
+          onDeleteTransaction={handleDeleteTransaction}
+        />
       </main>
 
       <AddTransactionSheet
