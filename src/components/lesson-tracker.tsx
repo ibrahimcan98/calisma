@@ -5,7 +5,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, doc, serverTimestamp, query, where, limit } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Student, LessonLog, BalanceLog } from '@/lib/types';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { LinkIcon, Plus, Trash2, Users, Wallet, TrendingUp, BookUser, Activity } from 'lucide-react';
@@ -376,9 +376,12 @@ export function LessonTracker() {
                           </p>
                       </div>
                       <div className="hidden lg:flex flex-1 flex-row gap-2 items-center" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleLessonDone(student)}>
+                          <div
+                            className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto cursor-pointer")}
+                            onClick={() => handleLessonDone(student)}
+                          >
                             Dersi İşle
-                          </Button>
+                          </div>
                           <div className="flex w-full sm:w-auto gap-2">
                               <Input
                                   type="number"
@@ -388,17 +391,20 @@ export function LessonTracker() {
                                   onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
                                   onKeyDown={(e) => e.key === 'Enter' && handleAddFunds(student)}
                               />
-                              <Button className="w-full sm:w-auto" onClick={() => handleAddFunds(student)}>
+                              <div
+                                className={cn(buttonVariants(), "w-full sm:w-auto cursor-pointer")}
+                                onClick={() => handleAddFunds(student)}
+                              >
                                 Ders Ekle
-                              </Button>
+                              </div>
                           </div>
                       </div>
                       <div className="flex-none ml-2" onClick={(e) => e.stopPropagation()}>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                               <Button variant="ghost" size="icon">
+                               <div className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'cursor-pointer')}>
                                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                              </Button>
+                               </div>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
@@ -490,4 +496,3 @@ export function LessonTracker() {
       </Card>
     </div>
   );
-}
