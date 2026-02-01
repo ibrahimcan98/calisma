@@ -1,9 +1,7 @@
 'use client'; // Make it a client component
 
 import { Wallet, User, LogOut, LayoutDashboard } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useAuth } from '@/firebase';
 import Link from 'next/link';
 import { Button } from './ui/button';
@@ -14,7 +12,6 @@ export function Header() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
-  const avatarImage = PlaceHolderImages.find(p => p.id === 'user-avatar');
 
   const handleSignOut = async () => {
     await auth.signOut();
@@ -42,12 +39,9 @@ export function Header() {
         {!isUserLoading && user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Avatar className="cursor-pointer h-9 w-9">
-                {avatarImage && <AvatarImage src={avatarImage.imageUrl} alt={avatarImage.description} data-ai-hint={avatarImage.imageHint} />}
-                <AvatarFallback>
-                  <User />
-                </AvatarFallback>
-              </Avatar>
+              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                <User className="h-5 w-5" />
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>{user.email}</DropdownMenuLabel>

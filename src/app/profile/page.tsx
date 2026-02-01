@@ -5,16 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useUser, useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, User as UserIcon } from 'lucide-react';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
-  const avatarImage = PlaceHolderImages.find(p => p.id === 'user-avatar');
-
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -39,12 +35,9 @@ export default function ProfilePage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="items-center text-center">
-            <Avatar className="h-24 w-24 mb-4">
-                {avatarImage && <AvatarImage src={avatarImage.imageUrl} alt={avatarImage.description} data-ai-hint={avatarImage.imageHint} />}
-                <AvatarFallback>
-                    <UserIcon className="h-12 w-12" />
-                </AvatarFallback>
-            </Avatar>
+            <div className="p-4 bg-secondary rounded-full mb-4">
+              <UserIcon className="h-12 w-12 text-muted-foreground" />
+            </div>
           <CardTitle className="text-2xl">Profil</CardTitle>
           <CardDescription>Profil bilgilerinizi burada görebilirsiniz.</CardDescription>
         </CardHeader>
