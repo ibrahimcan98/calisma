@@ -71,9 +71,11 @@ export function AddTransactionSheet({
     resolver: zodResolver(formSchema),
     defaultValues: {
       type: 'Expense',
-      amount: undefined,
+      amount: '' as any,
       date: new Date().toISOString().split('T')[0],
       description: '',
+      category: '',
+      subCategory: '',
     },
   });
 
