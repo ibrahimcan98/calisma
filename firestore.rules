@@ -125,10 +125,11 @@ service cloud.firestore {
     
     // This rule enables the "Son Bakiye Hareketleri" (Recent Balance Changes) feature.
     // It allows a Collection Group query on all `balanceLogs` collections.
-    // The `list` operation is only permitted if the document's `userId` field
-    // matches the person making the request. This ensures a user can only see their own data.
+    // The query is filtered on the client by `userId`, so this rule ensures that a user 
+    // can only `list` documents where the `userId` field matches their own auth UID.
+    // We also check for the existence of the `userId` field to prevent errors on old data.
     match /{path=**}/balanceLogs/{balanceLogId} {
-      allow list: if resource.data.userId == request.auth.uid;
+      allow list: if 'userId' in resource.data && resource.data.userId == request.auth.uid;
     }
   }
 }
