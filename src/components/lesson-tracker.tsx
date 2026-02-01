@@ -175,24 +175,26 @@ export function LessonTracker() {
   
   const handleAddFunds = (student: Student) => {
     if (!user) return;
-    const amount = parseFloat(fundsToAdd[student.id] || '0');
+    const lessonCount = parseInt(fundsToAdd[student.id] || '0', 10);
 
-    if (isNaN(amount) || amount <= 0) {
+    if (isNaN(lessonCount) || lessonCount <= 0 || !student.lessonPrice) {
       toast({
         variant: 'destructive',
-        title: 'Geçersiz Tutar',
-        description: 'Lütfen eklenecek pozitif bir tutar girin.',
+        title: 'Geçersiz Ders Sayısı',
+        description: 'Lütfen pozitif bir ders sayısı girin.',
       });
       return;
     }
+    
+    const amountToAdd = lessonCount * student.lessonPrice;
 
     const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
-    const newBalance = student.balance + amount;
+    const newBalance = student.balance + amountToAdd;
     updateDocumentNonBlocking(studentRef, { balance: newBalance });
     
     setFundsToAdd(prev => ({...prev, [student.id]: ''}));
 
-    toast({ title: "Bakiye Eklendi", description: `${student.name} için bakiye güncellendi.`});
+    toast({ title: "Bakiye Güncellendi", description: `${student.name} için ${lessonCount} derslik bakiye eklendi.`});
   };
 
   const handleFundsInputChange = (studentId: string, value: string) => {
@@ -266,13 +268,13 @@ export function LessonTracker() {
                                   <div className="flex w-full sm:w-auto gap-2">
                                       <Input
                                           type="number"
-                                          placeholder="Tutar"
+                                          placeholder="Ders sayısı"
                                           className="min-w-0"
                                           value={fundsToAdd[student.id] || ''}
                                           onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
                                           onKeyDown={(e) => e.key === 'Enter' && handleAddFunds(student)}
                                       />
-                                      <Button className="w-full sm:w-auto" onClick={() => handleAddFunds(student)}>Bakiye Ekle</Button>
+                                      <Button className="w-full sm:w-auto" onClick={() => handleAddFunds(student)}>Ders Ekle</Button>
                                   </div>
                               </div>
                               <div className="flex-none">
