@@ -15,7 +15,8 @@ import {
   isSameDay, 
   addMonths, 
   subMonths,
-  isWeekend
+  isWeekend,
+  getDay
 } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -49,6 +50,8 @@ type CalendarViewProps = {
   birthdays: Birthday[];
 };
 
+const TR_DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+
 export function CalendarView({ events, workRules, workLogs, birthdays }: CalendarViewProps) {
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
@@ -77,7 +80,13 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
         return bDate.getDate() === day.getDate() && bDate.getMonth() === day.getMonth();
     });
 
-    const dayName = format(day, 'eee', { locale: tr });
+    // date-fns getDay returns 0 for Sunday, 1 for Monday... 6 for Saturday
+    const dayIndex = getDay(day);
+    // Map date-fns index to our TR_DAYS index (0: Pzt, 1: Sal... 5: Cmt, 6: Paz)
+    // Mon(1) -> 0, Tue(2) -> 1, ..., Sat(6) -> 5, Sun(0) -> 6
+    const trDayIndex = dayIndex === 0 ? 6 : dayIndex - 1;
+    const dayName = TR_DAYS[trDayIndex];
+
     const virtualShifts = workRules
         .filter(r => r.isActive && r.daysOfWeek.includes(dayName))
         .filter(r => !dayLogs.some(l => isSameDay(l.date, day)));
@@ -139,7 +148,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-7 border-t border-l">
-          {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
+          {TR_DAYS.map(day => (
             <div key={day} className="p-2 text-center text-sm font-semibold border-r border-b bg-muted/30">
               {day}
             </div>

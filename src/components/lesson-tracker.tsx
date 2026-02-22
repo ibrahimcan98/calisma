@@ -329,10 +329,10 @@ export function LessonTracker() {
           </div>
 
           {students.length > 0 ? (
-            <Accordion type="single" collapsible className="w-full space-y-4">
+            <div className="w-full space-y-4">
               {students.map(student => (
-                <AccordionItem value={student.id} key={student.id} className="border-none">
-                  <div className="border rounded-md overflow-hidden">
+                <Accordion type="single" collapsible key={student.id} className="border rounded-md overflow-hidden bg-card">
+                  <AccordionItem value={student.id} className="border-none">
                     <div className="flex items-center pr-4">
                       <AccordionTrigger asChild>
                         <div className="flex-1 flex items-center gap-4 p-4 cursor-pointer font-medium hover:no-underline">
@@ -362,7 +362,7 @@ export function LessonTracker() {
                         </div>
                       </AccordionTrigger>
                       
-                      <div className="hidden lg:flex gap-2 items-center">
+                      <div className="hidden lg:flex gap-2 items-center" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="outline"
                             size="sm"
@@ -370,7 +370,7 @@ export function LessonTracker() {
                           >
                             Dersi İşle
                           </Button>
-                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex gap-2">
                               <Input
                                   type="number"
                                   placeholder="Sayı"
@@ -387,14 +387,14 @@ export function LessonTracker() {
                           </div>
                       </div>
 
-                      <div className="ml-2 flex items-center gap-2">
+                      <div className="ml-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                               <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                               <Button variant="ghost" size="icon">
                                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                                 </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                            <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
                                 <AlertDialogDescription>
@@ -407,12 +407,12 @@ export function LessonTracker() {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                          <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                       </div>
                     </div>
 
                     <AccordionContent>
-                      <div className="p-4 flex flex-col lg:hidden gap-4 border-t border-b bg-muted/30">
+                      <div className="p-4 flex flex-col lg:hidden gap-4 border-t border-b bg-muted/30" onClick={(e) => e.stopPropagation()}>
                           <Button variant="outline" className="w-full" onClick={(e) => handleLessonDone(student, e)}>Dersi İşle</Button>
                           <div className="flex w-full gap-2">
                               <Input
@@ -427,10 +427,10 @@ export function LessonTracker() {
                       </div>
                       {user && <StudentBalanceHistory student={student} formatCurrency={formatCurrency} />}
                     </AccordionContent>
-                  </div>
-                </AccordionItem>
+                  </AccordionItem>
+                </Accordion>
               ))}
-            </Accordion>
+            </div>
           ) : !isStudentsLoading && (
               <div className="text-center p-12 border-2 border-dashed rounded-lg">
                   <p className="text-muted-foreground">Henüz öğrenci eklenmemiş.</p>
