@@ -41,9 +41,22 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
 
   const handleDeleteRule = (id: string) => {
     if (!user) return;
+    
+    // 1. Kuralı sil
     const ruleRef = doc(firestore, 'users', user.uid, 'workRules', id);
     deleteDocumentNonBlocking(ruleRef);
-    toast({ title: "Kural Silindi", description: "Çalışma kuralı kaldırıldı." });
+
+    // 2. Bu kurala bağlı olan tüm mesai kayıtlarını (logs) bul ve sil
+    const logsToDelete = logs.filter(log => log.workRuleId === id);
+    logsToDelete.forEach(log => {
+      const logRef = doc(firestore, 'users', user.uid, 'workLogs', log.id);
+      deleteDocumentNonBlocking(logRef);
+    });
+
+    toast({ 
+      title: "Kural ve Kayıtlar Silindi", 
+      description: `Çalışma kuralı ve buna bağlı ${logsToDelete.length} mesai kaydı takvimden kaldırıldı.` 
+    });
   };
 
   const handleApplyShift = (rule: WorkRule, period: 'today' | 'week' | 'month') => {
