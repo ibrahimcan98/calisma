@@ -164,7 +164,8 @@ export function LessonTracker() {
     toast({ variant: 'destructive', title: "Öğrenci Silindi", description: "Seçilen öğrenci listeden kaldırıldı."});
   };
   
-  const handleLessonDone = (student: Student) => {
+  const handleLessonDone = (student: Student, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!user || !lessonLogsCollectionRef) return;
     const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
     const newBalance = student.balance - student.lessonPrice;
@@ -193,7 +194,8 @@ export function LessonTracker() {
     toast({ title: "Ders İşlendi", description: `${student.name} için bakiye güncellendi.`});
   };
   
-  const handleAddFunds = (student: Student) => {
+  const handleAddFunds = (student: Student, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!user) return;
     const lessonCount = parseInt(fundsToAdd[student.id] || '0', 10);
 
@@ -321,7 +323,7 @@ export function LessonTracker() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <Input placeholder="Yeni öğrenci adı" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} />
                   <Input type="number" placeholder="Ders ücreti" value={newStudentLessonPrice} onChange={(e) => setNewStudentLessonPrice(e.target.value)} />
-                  <Input type="number" placeholder="Başlangıç ders sayısı (opsiyonel)" value={newStudentBalance} onChange={(e) => setNewStudentBalance(e.target.value)} />
+                  <Input type="number" placeholder="Başlangıç ders sayısı" value={newStudentBalance} onChange={(e) => setNewStudentBalance(e.target.value)} />
                   <Button onClick={handleAddStudent} className="w-full"><Plus className="mr-2 h-4 w-4" /> Ekle</Button>
               </div>
           </div>
@@ -333,7 +335,7 @@ export function LessonTracker() {
                   <div className="border rounded-md">
                     <div className="flex items-center pr-4">
                       <AccordionTrigger asChild>
-                        <div className="flex-1 flex items-center gap-4 p-4 cursor-pointer font-medium hover:no-underline group">
+                        <div className="flex-1 flex items-center gap-4 p-4 cursor-pointer font-medium hover:no-underline">
                           <Users className="h-6 w-6 text-primary flex-shrink-0" />
                           <div className="flex-1">
                               <div className="flex items-center gap-2">
@@ -343,17 +345,16 @@ export function LessonTracker() {
                                       href={`/student/${user.uid}/${student.id}`} 
                                       target="_blank" 
                                       rel="noopener noreferrer" 
-                                      aria-label={`${student.name} rapor sayfasını aç`}
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <LinkIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
                                     </Link>
                                   )}
                               </div>
-                              <p className="text-sm text-muted-foreground">Ders Ücreti: {formatCurrency(student.lessonPrice)}</p>
+                              <p className="text-sm text-muted-foreground">Ücret: {formatCurrency(student.lessonPrice)}</p>
                           </div>
                           <div className="w-32 text-center mx-4">
-                              <p className="text-sm text-muted-foreground">Kalan Ders</p>
+                              <p className="text-sm text-muted-foreground">Durum</p>
                               <p className={cn("font-bold text-xl", student.balance < 0 ? 'text-destructive' : 'text-green-600')}>
                                   {getRemainingLessonsText(student)}
                               </p>
@@ -365,11 +366,11 @@ export function LessonTracker() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleLessonDone(student)}
+                            onClick={(e) => handleLessonDone(student, e)}
                           >
                             Dersi İşle
                           </Button>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                               <Input
                                   type="number"
                                   placeholder="Sayı"
@@ -379,7 +380,7 @@ export function LessonTracker() {
                               />
                               <Button
                                   size="sm"
-                                  onClick={() => handleAddFunds(student)}
+                                  onClick={(e) => handleAddFunds(student, e)}
                               >
                                 Ders Ekle
                               </Button>
@@ -389,15 +390,15 @@ export function LessonTracker() {
                       <div className="ml-2 flex items-center gap-2">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                               <Button variant="ghost" size="icon">
+                               <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
                                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                                </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent>
+                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Bu işlem geri alınamaz. "{student.name}" öğrencisi kalıcı olarak silinecektir.
+                                  "{student.name}" öğrencisi kalıcı olarak silinecektir.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -412,7 +413,7 @@ export function LessonTracker() {
 
                     <AccordionContent>
                       <div className="p-4 flex flex-col lg:hidden gap-4 border-t border-b bg-muted/30">
-                          <Button variant="outline" className="w-full" onClick={() => handleLessonDone(student)}>Dersi İşle</Button>
+                          <Button variant="outline" className="w-full" onClick={(e) => handleLessonDone(student, e)}>Dersi İşle</Button>
                           <div className="flex w-full gap-2">
                               <Input
                                   type="number"
@@ -421,7 +422,7 @@ export function LessonTracker() {
                                   value={fundsToAdd[student.id] || ''}
                                   onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
                               />
-                              <Button className="w-full" onClick={() => handleAddFunds(student)}>Ders Ekle</Button>
+                              <Button className="w-full" onClick={(e) => handleAddFunds(student, e)}>Ders Ekle</Button>
                           </div>
                       </div>
                       {user && <StudentBalanceHistory student={student} formatCurrency={formatCurrency} />}
@@ -431,18 +432,18 @@ export function LessonTracker() {
               ))}
             </Accordion>
           ) : !isStudentsLoading && (
-              <div className="text-center p-12">
-                  <p className="text-muted-foreground">Henüz öğrenci eklenmemiş. Yukarıdaki formu kullanarak yeni bir öğrenci ekleyebilirsiniz.</p>
+              <div className="text-center p-12 border-2 border-dashed rounded-lg">
+                  <p className="text-muted-foreground">Henüz öğrenci eklenmemiş.</p>
               </div>
           )}
-          {isStudentsLoading && <p className="text-center p-12 text-muted-foreground">Öğrenciler yükleniyor...</p>}
+          {isStudentsLoading && <p className="text-center p-12 text-muted-foreground">Yükleniyor...</p>}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
             <CardTitle>Ders Geçmişi</CardTitle>
-            <CardDescription>Tamamlanan dersleri hafta hafta görüntüleyin.</CardDescription>
+            <CardDescription>Haftalık tamamlanan dersler.</CardDescription>
         </CardHeader>
         <CardContent>
             {lessonLogs.length > 0 ? (
@@ -475,7 +476,7 @@ export function LessonTracker() {
                     })}
                 </Accordion>
             ) : (
-                <p className="text-muted-foreground text-center py-8">Henüz işlenmiş ders kaydı yok.</p>
+                <p className="text-muted-foreground text-center py-8">Kayıt yok.</p>
             )}
         </CardContent>
       </Card>
