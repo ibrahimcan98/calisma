@@ -68,7 +68,7 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
     let count = 0;
 
     daysToApply.forEach(day => {
-      const dayName = format(day, 'eee', { locale: tr });
+      const dayName = format(day, 'eee', { locale: tr }).replace('.', '');
       if (rule.daysOfWeek.includes(dayName)) {
         const alreadyExists = logs.some(l => isSameDay(l.date, day) && l.workRuleId === rule.id);
         

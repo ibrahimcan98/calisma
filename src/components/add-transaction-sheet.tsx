@@ -53,7 +53,7 @@ type AddTransactionSheetProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   categories: Category[];
-  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'userId'>) => void;
   onAddCategory: (category: Omit<Category, 'icon'>) => Category;
 };
 

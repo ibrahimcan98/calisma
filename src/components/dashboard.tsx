@@ -156,7 +156,7 @@ export function Dashboard() {
         }
     }
 
-    // Toplam Gelir = İşlemlerden gelen gelir + Mesai kazançları
+    // Toplam Gelir = İşlemlerden gelen gelir + Maaş kazançları
     const totalIncome = incomeFromTransactions + salaryStats.totalSalaryEarned;
 
     const oldestTransaction = transactions.length > 0 ? transactions.reduce((earliest, t) => earliest.date > t.date ? t : earliest) : {date: new Date()};
@@ -195,9 +195,13 @@ export function Dashboard() {
     );
   }, [transactions, isMounted]);
 
-  const handleAddTransaction = (transaction: Omit<Transaction, 'id'>) => {
-    if (!transactionsCollectionRef) return;
-    addDocumentNonBlocking(transactionsCollectionRef, { ...transaction, date: transaction.date });
+  const handleAddTransaction = (transaction: Omit<Transaction, 'id' | 'userId'>) => {
+    if (!transactionsCollectionRef || !user) return;
+    addDocumentNonBlocking(transactionsCollectionRef, { 
+      ...transaction, 
+      date: transaction.date,
+      userId: user.uid
+    });
   };
 
   const handleDeleteTransaction = (id: string) => {

@@ -4,6 +4,7 @@ export type TransactionType = 'Income' | 'Expense';
 
 export type Transaction = {
   id: string;
+  userId: string;
   date: Date;
   amount: number;
   type: TransactionType;
@@ -99,7 +100,7 @@ export type WorkRule = {
   customBreakDurationMinutes?: number;
   isActive: boolean;
   color?: string; // Color for the shift
-  hourlyRate?: number; // Added: Rate per hour for salary calculation
+  hourlyRate?: number; // Rate per hour for salary calculation
 };
 
 export type WorkLog = {

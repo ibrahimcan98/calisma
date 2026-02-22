@@ -119,7 +119,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       let count = 0;
 
       daysToApply.forEach(day => {
-        const dayName = format(day, 'eee', { locale: tr });
+        const dayName = format(day, 'eee', { locale: tr }).replace('.', '');
         if (values.days.includes(dayName)) {
           const startTime = new Date(day);
           const [h, m] = values.startTime.split(':').map(Number);
