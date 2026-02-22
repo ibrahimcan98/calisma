@@ -83,6 +83,7 @@ export type CalendarEvent = {
   eventType: EventType;
   isShared: boolean;
   recurrenceRule?: string;
+  color?: string; // Hex or tailwind class
 };
 
 export type WorkScheduleType = 'Fixed' | 'Shift' | 'Flexible';
@@ -97,6 +98,7 @@ export type WorkRule = {
   daysOfWeek: string[];          // ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
   customBreakDurationMinutes?: number;
   isActive: boolean;
+  color?: string; // Color for the shift
 };
 
 export type WorkLog = {
@@ -111,6 +113,7 @@ export type WorkLog = {
   isBusy: boolean;
   workRuleId?: string;
   notes?: string;
+  color?: string; // Inherited from rule
 };
 
 export type Birthday = {

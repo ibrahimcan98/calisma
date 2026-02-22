@@ -33,8 +33,18 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { cn } from '@/lib/utils';
 
 const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+
+const COLORS = [
+  { name: 'Mor (Tuba)', value: '#a855f7' },
+  { name: 'Kırmızı (İbrahim)', value: '#ef4444' },
+  { name: 'Mavi', value: '#3b82f6' },
+  { name: 'Yeşil', value: '#22c55e' },
+  { name: 'Turuncu', value: '#f97316' },
+  { name: 'İndigo', value: '#6366f1' },
+];
 
 const formSchema = z.object({
   title: z.string().min(2, { message: 'Başlık gereklidir.' }),
@@ -43,6 +53,7 @@ const formSchema = z.object({
   endTime: z.string().min(1),
   days: z.array(z.string()).min(1, { message: 'En az bir gün seçilmelidir.' }),
   breakMinutes: z.coerce.number().default(30),
+  color: z.string().default('#a855f7'),
 });
 
 type AddWorkRuleSheetProps = {
@@ -64,6 +75,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: AddWorkRuleSheetProps
       endTime: '18:00',
       days: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum'],
       breakMinutes: 30,
+      color: user?.email === 'tubakodak8@gmail.com' ? '#a855f7' : '#ef4444',
     },
   });
 
@@ -79,6 +91,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: AddWorkRuleSheetProps
       daysOfWeek: values.days,
       customBreakDurationMinutes: values.breakMinutes,
       isActive: true,
+      color: values.color,
     });
     form.reset();
     onOpenChange(false);
@@ -90,7 +103,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: AddWorkRuleSheetProps
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Çalışma Düzeni Ekle</SheetTitle>
-          <SheetDescription>Tekrarlayan mesai saatlerinizi belirleyin.</SheetDescription>
+          <SheetDescription>Tekrarlayan mesai saatlerinizi ve renginizi belirleyin.</SheetDescription>
         </SheetHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-6">
@@ -101,6 +114,31 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: AddWorkRuleSheetProps
                 <FormItem>
                   <FormLabel>Düzen Adı</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Renk Seçimi</FormLabel>
+                  <div className="flex flex-wrap gap-2">
+                    {COLORS.map((color) => (
+                      <button
+                        key={color.value}
+                        type="button"
+                        className={cn(
+                          "h-8 w-8 rounded-full border-2 transition-all",
+                          field.value === color.value ? "border-foreground scale-110 shadow-sm" : "border-transparent"
+                        )}
+                        style={{ backgroundColor: color.value }}
+                        onClick={() => field.onChange(color.value)}
+                        title={color.name}
+                      />
+                    ))}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

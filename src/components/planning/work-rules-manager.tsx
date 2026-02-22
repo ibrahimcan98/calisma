@@ -11,6 +11,7 @@ import { deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/no
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { AddWorkRuleSheet } from './add-work-rule-sheet';
+import { cn } from '@/lib/utils';
 
 type WorkRulesManagerProps = {
   rules: WorkRule[];
@@ -34,7 +35,6 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
     if (!user) return;
     const logsRef = collection(firestore, 'users', user.uid, 'workLogs');
     
-    // Simulate shift log creation
     const now = new Date();
     const startTime = new Date(now);
     const [h, m] = rule.defaultDailyStartTime.split(':').map(Number);
@@ -56,7 +56,8 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
         totalWorkDurationMinutes: totalMinutes,
         isBusy: true,
         workRuleId: rule.id,
-        notes: `${rule.title} kapsamında otomatik oluşturuldu.`
+        notes: `${rule.title} kapsamında otomatik oluşturuldu.`,
+        color: rule.color,
     });
 
     toast({ title: "Mesai Başlatıldı", description: `${rule.title} baz alınarak bugüne kayıt eklendi.` });
@@ -76,7 +77,11 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {rules.map(rule => (
-          <Card key={rule.id}>
+          <Card key={rule.id} className="overflow-hidden">
+            <div 
+              className="h-1.5 w-full" 
+              style={{ backgroundColor: rule.color || (user?.email === 'tubakodak8@gmail.com' ? '#a855f7' : '#ef4444') }} 
+            />
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <div>
@@ -106,6 +111,13 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
             </CardContent>
           </Card>
         ))}
+
+        {rules.length === 0 && (
+          <div className="col-span-full py-12 text-center border-2 border-dashed rounded-lg">
+             <Clock className="mx-auto h-12 w-12 text-muted-foreground/30" />
+             <p className="mt-4 text-muted-foreground">Henüz bir çalışma düzeni eklenmemiş.</p>
+          </div>
+        )}
       </div>
 
       <AddWorkRuleSheet 

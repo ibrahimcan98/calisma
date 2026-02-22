@@ -10,7 +10,6 @@ import {
   SheetHeader,
   SheetTitle,
   SheetFooter,
-  SheetClose,
 } from '@/components/ui/sheet';
 import {
   Form,
@@ -32,8 +31,18 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { cn } from '@/lib/utils';
+
+const COLORS = [
+  { name: 'Mor', value: '#a855f7' },
+  { name: 'Kırmızı', value: '#ef4444' },
+  { name: 'Mavi', value: '#3b82f6' },
+  { name: 'Yeşil', value: '#22c55e' },
+  { name: 'Turuncu', value: '#f97316' },
+  { name: 'İndigo', value: '#6366f1' },
+];
 
 const formSchema = z.object({
   title: z.string().min(2, { message: 'Başlık en az 2 karakter olmalıdır.' }),
@@ -43,6 +52,7 @@ const formSchema = z.object({
   endTime: z.string().min(1, { message: 'Bitiş saati gereklidir.' }),
   eventType: z.enum(['Work', 'Private']),
   isShared: z.boolean().default(true),
+  color: z.string().optional(),
 });
 
 type AddEventSheetProps = {
@@ -65,6 +75,7 @@ export function AddEventSheet({ isOpen, onOpenChange }: AddEventSheetProps) {
       endTime: '10:00',
       eventType: 'Private',
       isShared: true,
+      color: user?.email === 'tubakodak8@gmail.com' ? '#a855f7' : '#ef4444',
     },
   });
 
@@ -83,6 +94,7 @@ export function AddEventSheet({ isOpen, onOpenChange }: AddEventSheetProps) {
       endTime: end,
       eventType: values.eventType,
       isShared: values.isShared,
+      color: values.color,
     });
 
     form.reset();
@@ -107,6 +119,29 @@ export function AddEventSheet({ isOpen, onOpenChange }: AddEventSheetProps) {
                   <FormLabel>Başlık</FormLabel>
                   <FormControl><Input placeholder="örn. Toplantı, Sinema" {...field} /></FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Renk</FormLabel>
+                  <div className="flex flex-wrap gap-2">
+                    {COLORS.map((color) => (
+                      <button
+                        key={color.value}
+                        type="button"
+                        className={cn(
+                          "h-6 w-6 rounded-full border-2 transition-all",
+                          field.value === color.value ? "border-foreground scale-110" : "border-transparent"
+                        )}
+                        style={{ backgroundColor: color.value }}
+                        onClick={() => field.onChange(color.value)}
+                      />
+                    ))}
+                  </div>
                 </FormItem>
               )}
             />

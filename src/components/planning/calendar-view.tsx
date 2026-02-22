@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Plus, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { 
   format, 
   startOfMonth, 
@@ -20,8 +20,8 @@ import {
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent, WorkRule, WorkLog, Birthday } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
 import { AddEventSheet } from './add-event-sheet';
+import { useUser } from '@/firebase';
 
 type CalendarViewProps = {
   events: CalendarEvent[];
@@ -31,6 +31,7 @@ type CalendarViewProps = {
 };
 
 export function CalendarView({ events, workRules, workLogs, birthdays }: CalendarViewProps) {
+  const { user: currentUser } = useUser();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
 
@@ -47,6 +48,17 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
 
+  // Helper to determine user color
+  const getUserStyle = (userId: string) => {
+    // Tuba is Purple, İbrahim is Red
+    // Assuming Tuba is tubakodak8@gmail.com based on previous logs
+    // In a real app, this would be a field in the UserProfile entity
+    const isTuba = userId === currentUser?.uid && currentUser?.email === 'tubakodak8@gmail.com';
+    // For now, let's toggle based on a simpler logic if we don't have Ibrahim's UID
+    if (isTuba) return "border-l-4 border-l-purple-500 bg-purple-50 text-purple-700";
+    return "border-l-4 border-l-red-500 bg-red-50 text-red-700";
+  };
+
   const getEventsForDay = (day: Date) => {
     const dayEvents = events.filter(e => isSameDay(e.startTime, day));
     const dayLogs = workLogs.filter(l => isSameDay(l.date, day));
@@ -55,7 +67,6 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
         return bDate.getDate() === day.getDate() && bDate.getMonth() === day.getMonth();
     });
 
-    // Virtual events from rules if no log exists
     const dayName = format(day, 'eee', { locale: tr });
     const virtualShifts = workRules
         .filter(r => r.isActive && r.daysOfWeek.includes(dayName))
@@ -105,7 +116,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
               <div
                 key={idx}
                 className={cn(
-                  "min-h-[120px] p-2 border-r border-b transition-colors",
+                  "min-h-[140px] p-2 border-r border-b transition-colors",
                   !isCurrentMonth && "bg-muted/10 text-muted-foreground/50",
                   isToday && "bg-primary/5",
                   isWeekend(day) && isCurrentMonth && "bg-muted/5"
@@ -122,25 +133,50 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                 
                 <div className="space-y-1">
                   {birthdays.map(b => (
-                    <div key={b.id} className="text-[10px] bg-pink-100 text-pink-700 px-1 py-0.5 rounded flex items-center gap-1">
+                    <div key={b.id} className="text-[10px] bg-pink-100 text-pink-700 px-1 py-0.5 rounded flex items-center gap-1 border border-pink-200">
                         🎂 {b.personName}
                     </div>
                   ))}
-                  {logs.map(l => (
-                    <div key={l.id} className="text-[10px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded border border-blue-200">
-                        💼 Mesai: {format(l.actualStartTime, 'HH:mm')}-{format(l.actualEndTime, 'HH:mm')}
-                    </div>
-                  ))}
+                  
+                  {logs.map(l => {
+                    const rule = workRules.find(r => r.id === l.workRuleId);
+                    const customColor = rule?.color;
+                    return (
+                      <div 
+                        key={l.id} 
+                        className={cn(
+                            "text-[10px] px-1 py-0.5 rounded border truncate",
+                            customColor ? `border-${customColor}-300 bg-${customColor}-50 text-${customColor}-700` : getUserStyle(l.userId)
+                        )}
+                        style={customColor && !customColor.startsWith('bg-') ? { backgroundColor: `${customColor}20`, borderColor: customColor, color: customColor } : {}}
+                      >
+                          💼 {format(l.actualStartTime, 'HH:mm')}-{format(l.actualEndTime, 'HH:mm')}
+                      </div>
+                    );
+                  })}
+
                   {virtualShifts.map(v => (
-                    <div key={v.id} className="text-[10px] bg-blue-50 text-blue-400 px-1 py-0.5 rounded border border-dashed border-blue-200 opacity-70">
-                        🔄 Planlı: {v.defaultDailyStartTime}-{v.defaultDailyEndTime}
+                    <div 
+                      key={v.id} 
+                      className={cn(
+                        "text-[10px] px-1 py-0.5 rounded border border-dashed opacity-70 truncate",
+                        v.color ? `border-${v.color}-300 bg-${v.color}-50 text-${v.color}-400` : "border-blue-200 bg-blue-50 text-blue-400"
+                      )}
+                      style={v.color && !v.color.startsWith('bg-') ? { borderColor: v.color, color: v.color } : {}}
+                    >
+                        🔄 {v.defaultDailyStartTime}-{v.defaultDailyEndTime}
                     </div>
                   ))}
+
                   {events.map(e => (
-                    <div key={e.id} className={cn(
-                        "text-[10px] px-1 py-0.5 rounded truncate",
-                        e.eventType === 'Work' ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
-                    )}>
+                    <div 
+                      key={e.id} 
+                      className={cn(
+                        "text-[10px] px-1 py-0.5 rounded truncate border",
+                        e.color ? `border-${e.color}-300 bg-${e.color}-50 text-${e.color}-700` : (e.eventType === 'Work' ? "bg-indigo-100 text-indigo-700 border-indigo-200" : "bg-emerald-100 text-emerald-700 border-emerald-200")
+                      )}
+                      style={e.color && !e.color.startsWith('bg-') ? { backgroundColor: `${e.color}20`, borderColor: e.color, color: e.color } : {}}
+                    >
                         {e.title}
                     </div>
                   ))}
@@ -150,12 +186,11 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
           })}
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-4 text-xs">
-            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-blue-100 border border-blue-200"></div> Gerçekleşen Mesai</div>
-            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-blue-50 border border-dashed border-blue-200"></div> Planlı Mesai</div>
-            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-emerald-100"></div> Özel Etkinlik</div>
-            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-indigo-100"></div> İş Etkinliği</div>
-            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-pink-100"></div> Doğum Günü</div>
+        <div className="mt-6 flex flex-wrap gap-4 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-purple-100 border-l-4 border-l-purple-500"></div> Tuba</div>
+            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-red-100 border-l-4 border-l-red-500"></div> İbrahim</div>
+            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-pink-100 border border-pink-200"></div> Doğum Günü</div>
+            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded border border-dashed border-muted-foreground opacity-50"></div> Planlı/Beklenen</div>
         </div>
       </CardContent>
 
