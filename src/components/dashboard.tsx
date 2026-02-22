@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -79,7 +80,7 @@ export function Dashboard() {
     if (!rawTransactions) return [];
     return rawTransactions.map(t => ({
       ...t,
-      date: (t.date as any).toDate(),
+      date: (t.date as any).toDate ? (t.date as any).toDate() : new Date(t.date),
     }));
   }, [rawTransactions]);
 
@@ -87,7 +88,7 @@ export function Dashboard() {
     if (!rawWorkLogs) return [];
     return rawWorkLogs.map(l => ({
       ...l,
-      date: (l.date as any).toDate(),
+      date: (l.date as any).toDate ? (l.date as any).toDate() : new Date(l.date),
     }));
   }, [rawWorkLogs]);
 
@@ -104,6 +105,7 @@ export function Dashboard() {
     for (const log of workLogs) {
       const rule = workRules.find(r => r.id === log.workRuleId);
       if (rule && rule.hourlyRate) {
+        // Duration is in minutes, convert to hours. Mola already deducted in totalWorkDurationMinutes.
         const earnings = (log.totalWorkDurationMinutes / 60) * rule.hourlyRate;
         totalSalaryEarned += earnings;
 
@@ -158,8 +160,8 @@ export function Dashboard() {
 
     const totalIncome = incomeFromTransactions + salaryStats.totalSalaryEarned;
     const oldestTransaction = transactions.length > 0 ? transactions.reduce((earliest, t) => earliest.date > t.date ? t : earliest) : {date: new Date()};
-    const totalMonths = differenceInCalendarMonths(now, oldestTransaction.date) + 1;
-    const averageMonthlyExpense = totalExpenses / (totalMonths > 0 ? totalMonths : 1);
+    const totalMonths = Math.max(1, differenceInCalendarMonths(now, oldestTransaction.date) + 1);
+    const averageMonthlyExpense = totalExpenses / totalMonths;
     const lastMonthSavings = lastMonthIncome - lastMonthExpenses;
 
     return {
@@ -195,11 +197,19 @@ export function Dashboard() {
 
   const handleAddTransaction = (transaction: Omit<Transaction, 'id' | 'userId'>) => {
     if (!transactionsCollectionRef || !user) return;
-    addDocumentNonBlocking(transactionsCollectionRef, { 
-      ...transaction, 
+    
+    // CRITICAL: Always explicitly include userId for security rules
+    const finalData = {
+      type: transaction.type,
+      amount: transaction.amount,
       date: transaction.date,
-      userId: user.uid // Ensure userId is included for security rules
-    });
+      category: transaction.category,
+      subCategory: transaction.subCategory || "",
+      description: transaction.description,
+      userId: user.uid
+    };
+    
+    addDocumentNonBlocking(transactionsCollectionRef, finalData);
   };
 
   const handleDeleteTransaction = (id: string) => {
@@ -250,7 +260,7 @@ export function Dashboard() {
       date: new Date(),
       category: 'other',
       description: 'Geçen aydan devir',
-      userId: user.uid, // Ensure userId is included for security rules
+      userId: user.uid,
     };
     
     addDocumentNonBlocking(transactionsCollectionRef, carryOverTransaction);

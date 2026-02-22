@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -82,13 +83,12 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
 
     // date-fns getDay returns 0 for Sunday, 1 for Monday... 6 for Saturday
     const dayIndex = getDay(day);
-    // Map date-fns index to our TR_DAYS index (0: Pzt, 1: Sal... 5: Cmt, 6: Paz)
-    // Mon(1) -> 0, Tue(2) -> 1, ..., Sat(6) -> 5, Sun(0) -> 6
+    // Map to TR_DAYS index (0: Pzt, 1: Sal... 6: Paz)
     const trDayIndex = dayIndex === 0 ? 6 : dayIndex - 1;
     const dayName = TR_DAYS[trDayIndex];
 
     const virtualShifts = workRules
-        .filter(r => r.isActive && r.daysOfWeek.includes(dayName))
+        .filter(r => r.isActive && r.daysOfWeek.some(d => d.replace('.', '').toLowerCase().startsWith(dayName.toLowerCase().slice(0, 2))))
         .filter(r => !dayLogs.some(l => isSameDay(l.date, day)));
 
     return {
