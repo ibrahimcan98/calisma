@@ -80,7 +80,7 @@ export function LessonTracker() {
     })).sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [rawLessonLogs]);
 
-  const { totalEarnings, logsByWeek, sortedWeeks } = useMemo(() => {
+  const stats = useMemo(() => {
     if (!isMounted) return { totalEarnings: 0, logsByWeek: {}, sortedWeeks: [] };
     const totalEarnings = lessonLogs.reduce((sum, log) => sum + log.lessonPrice, 0);
 
@@ -349,77 +349,83 @@ export function LessonTracker() {
               {students.map(student => (
                 <AccordionItem value={student.id} key={student.id} className="border-none">
                   <div className="border rounded-md">
-                    <AccordionTrigger className="p-4 hover:no-underline [&[data-state=open]]:border-b">
-                      <div className="flex-1 flex items-center gap-4 text-left">
-                          <Users className="h-6 w-6 text-primary flex-shrink-0" />
-                          <div>
-                              <div className="flex items-center gap-2">
-                                  <p className="font-bold text-lg">{student.name}</p>
-                                  {user && (
-                                    <Link 
-                                      href={`/student/${user.uid}/${student.id}`} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer" 
-                                      aria-label={`${student.name} rapor sayfasını aç`}
-                                    >
-                                      <LinkIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                                    </Link>
-                                  )}
-                              </div>
-                              <p className="text-sm text-muted-foreground">Ders Ücreti: {formatCurrency(student.lessonPrice)}</p>
-                          </div>
-                      </div>
-                      <div className="w-full sm:w-32 text-center mx-4">
-                          <p className="text-sm text-muted-foreground">Kalan Ders</p>
-                          <p className={cn("font-bold text-xl", student.balance < 0 ? 'text-destructive' : 'text-green-600')}>
-                              {getRemainingLessonsText(student)}
-                          </p>
-                      </div>
-                      <div className="hidden lg:flex flex-1 flex-row gap-2 items-center">
-                          <Button
-                            variant="outline"
-                            className="w-full sm:w-auto"
-                            onClick={() => handleLessonDone(student)}
-                          >
-                            Dersi İşle
-                          </Button>
-                          <div className="flex w-full sm:w-auto gap-2">
-                              <Input
-                                  type="number"
-                                  placeholder="Ders sayısı"
-                                  className="min-w-0"
-                                  value={fundsToAdd[student.id] || ''}
-                                  onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
-                                  onKeyDown={(e) => e.key === 'Enter' && handleAddFunds(student)}
-                              />
-                              <Button
-                                  className="w-full sm:w-auto"
-                                  onClick={() => handleAddFunds(student)}
-                              >
-                                Ders Ekle
-                              </Button>
-                          </div>
-                      </div>
-                      <div className="flex-none ml-2">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                               <Button variant="ghost" size="icon">
-                                  <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Bu işlem geri alınamaz. "{student.name}" öğrencisi kalıcı olarak silinecektir.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>İptal</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteStudent(student.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                    <AccordionTrigger asChild>
+                      <div className="flex flex-1 items-center justify-between p-4 cursor-pointer font-medium transition-all hover:no-underline [&[data-state=open]]:border-b group">
+                        <div className="flex-1 flex items-center gap-4 text-left">
+                            <Users className="h-6 w-6 text-primary flex-shrink-0" />
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <p className="font-bold text-lg">{student.name}</p>
+                                    {user && (
+                                      <Link 
+                                        href={`/student/${user.uid}/${student.id}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        aria-label={`${student.name} rapor sayfasını aç`}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <LinkIcon className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                      </Link>
+                                    )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">Ders Ücreti: {formatCurrency(student.lessonPrice)}</p>
+                            </div>
+                        </div>
+                        <div className="w-full sm:w-32 text-center mx-4">
+                            <p className="text-sm text-muted-foreground">Kalan Ders</p>
+                            <p className={cn("font-bold text-xl", student.balance < 0 ? 'text-destructive' : 'text-green-600')}>
+                                {getRemainingLessonsText(student)}
+                            </p>
+                        </div>
+                        <div className="hidden lg:flex flex-1 flex-row gap-2 items-center">
+                            <Button
+                              variant="outline"
+                              className="w-full sm:w-auto"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLessonDone(student);
+                              }}
+                            >
+                              Dersi İşle
+                            </Button>
+                            <div className="flex w-full sm:w-auto gap-2" onClick={(e) => e.stopPropagation()}>
+                                <Input
+                                    type="number"
+                                    placeholder="Ders sayısı"
+                                    className="min-w-0"
+                                    value={fundsToAdd[student.id] || ''}
+                                    onChange={(e) => handleFundsInputChange(student.id, e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddFunds(student)}
+                                />
+                                <Button
+                                    className="w-full sm:w-auto"
+                                    onClick={() => handleAddFunds(student)}
+                                >
+                                  Ders Ekle
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="flex-none ml-2" onClick={(e) => e.stopPropagation()}>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                 <Button variant="ghost" size="icon">
+                                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                                 </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Bu işlem geri alınamaz. "{student.name}" öğrencisi kalıcı olarak silinecektir.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>İptal</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteStudent(student.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
