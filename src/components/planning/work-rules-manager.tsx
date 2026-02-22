@@ -70,7 +70,6 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
     daysToApply.forEach(day => {
       const dayName = format(day, 'eee', { locale: tr });
       if (rule.daysOfWeek.includes(dayName)) {
-        // Zaten aynı gün ve kural için kayıt var mı kontrol et
         const alreadyExists = logs.some(l => isSameDay(l.date, day) && l.workRuleId === rule.id);
         
         if (!alreadyExists) {

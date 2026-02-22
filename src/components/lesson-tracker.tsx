@@ -332,12 +332,12 @@ export function LessonTracker() {
             <Accordion type="single" collapsible className="w-full space-y-4">
               {students.map(student => (
                 <AccordionItem value={student.id} key={student.id} className="border-none">
-                  <div className="border rounded-md">
+                  <div className="border rounded-md overflow-hidden">
                     <div className="flex items-center pr-4">
                       <AccordionTrigger asChild>
                         <div className="flex-1 flex items-center gap-4 p-4 cursor-pointer font-medium hover:no-underline">
                           <Users className="h-6 w-6 text-primary flex-shrink-0" />
-                          <div className="flex-1">
+                          <div className="flex-1 text-left">
                               <div className="flex items-center gap-2">
                                   <p className="font-bold text-lg">{student.name}</p>
                                   {user && (
