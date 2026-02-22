@@ -2,13 +2,13 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp, query, where, limit } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, query, orderBy, where, limit } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Student, LessonLog, BalanceLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { LinkIcon, Plus, Trash2, Users, Wallet, TrendingUp, BookUser, Activity } from 'lucide-react';
+import { LinkIcon, Plus, Trash2, Users, Wallet, TrendingUp, BookUser, Activity, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import {
   AlertDialog,
@@ -405,7 +405,7 @@ export function LessonTracker() {
                                 </Button>
                             </div>
                         </div>
-                        <div className="flex-none ml-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-none ml-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                  <Button variant="ghost" size="icon">
@@ -425,6 +425,7 @@ export function LessonTracker() {
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
+                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                         </div>
                       </div>
                     </AccordionTrigger>
