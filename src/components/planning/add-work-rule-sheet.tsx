@@ -133,8 +133,8 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
           let eTime = values.endTime;
 
           if (values.type === 'Flexible' && values.daySpecificTimes?.[dayName]) {
-            sTime = values.daySpecificTimes[dayName].startTime;
-            eTime = values.daySpecificTimes[dayName].endTime;
+            sTime = values.daySpecificTimes[dayName].startTime || values.startTime;
+            eTime = values.daySpecificTimes[dayName].endTime || values.endTime;
           }
 
           const startTime = new Date(day);
@@ -189,7 +189,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Düzen Adı</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
+                  <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -226,7 +226,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                     <FormControl>
                       <div className="relative">
                         <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="number" step="0.5" className="pl-10" {...field} />
+                        <Input type="number" step="0.5" className="pl-10" {...field} value={field.value ?? 0} />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -242,7 +242,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                     <FormControl>
                       <div className="relative">
                         <Coffee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="number" className="pl-10" {...field} />
+                        <Input type="number" className="pl-10" {...field} value={field.value ?? 0} />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -283,7 +283,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Başlangıç</FormLabel>
-                      <FormControl><Input type="time" {...field} /></FormControl>
+                      <FormControl><Input type="time" {...field} value={field.value ?? ''} /></FormControl>
                     </FormItem>
                   )}
                 />
@@ -293,7 +293,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Bitiş</FormLabel>
-                      <FormControl><Input type="time" {...field} /></FormControl>
+                      <FormControl><Input type="time" {...field} value={field.value ?? ''} /></FormControl>
                     </FormItem>
                   )}
                 />
@@ -346,7 +346,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                       name={`daySpecificTimes.${day}.startTime`}
                       render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormControl><Input type="time" {...field} className="h-8 text-xs" /></FormControl>
+                          <FormControl><Input type="time" {...field} value={field.value ?? ''} className="h-8 text-xs" /></FormControl>
                         </FormItem>
                       )}
                     />
@@ -356,7 +356,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                       name={`daySpecificTimes.${day}.endTime`}
                       render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormControl><Input type="time" {...field} className="h-8 text-xs" /></FormControl>
+                          <FormControl><Input type="time" {...field} value={field.value ?? ''} className="h-8 text-xs" /></FormControl>
                         </FormItem>
                       )}
                     />

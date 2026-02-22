@@ -42,11 +42,9 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
   const handleDeleteRule = (id: string) => {
     if (!user) return;
     
-    // 1. Kuralı sil
     const ruleRef = doc(firestore, 'users', user.uid, 'workRules', id);
     deleteDocumentNonBlocking(ruleRef);
 
-    // 2. Bu kurala bağlı olan tüm mesai kayıtlarını (logs) bul ve sil
     const logsToDelete = logs.filter(log => log.workRuleId === id);
     logsToDelete.forEach(log => {
       const logRef = doc(firestore, 'users', user.uid, 'workLogs', log.id);
