@@ -156,9 +156,7 @@ export function Dashboard() {
         }
     }
 
-    // Toplam Gelir = İşlemlerden gelen gelir + Maaş kazançları
     const totalIncome = incomeFromTransactions + salaryStats.totalSalaryEarned;
-
     const oldestTransaction = transactions.length > 0 ? transactions.reduce((earliest, t) => earliest.date > t.date ? t : earliest) : {date: new Date()};
     const totalMonths = differenceInCalendarMonths(now, oldestTransaction.date) + 1;
     const averageMonthlyExpense = totalExpenses / (totalMonths > 0 ? totalMonths : 1);
@@ -200,7 +198,7 @@ export function Dashboard() {
     addDocumentNonBlocking(transactionsCollectionRef, { 
       ...transaction, 
       date: transaction.date,
-      userId: user.uid
+      userId: user.uid // Ensure userId is included for security rules
     });
   };
 
@@ -252,7 +250,7 @@ export function Dashboard() {
       date: new Date(),
       category: 'other',
       description: 'Geçen aydan devir',
-      userId: user.uid,
+      userId: user.uid, // Ensure userId is included for security rules
     };
     
     addDocumentNonBlocking(transactionsCollectionRef, carryOverTransaction);

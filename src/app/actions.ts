@@ -8,7 +8,7 @@ import {
 import type { Transaction } from '@/lib/types';
 
 export async function getSpendingAnalysis(transactions: Transaction[]): Promise<SpendingAnalysisOutput> {
-  if (transactions.length === 0) {
+  if (!transactions || transactions.length === 0) {
     return {
         monthlyReport: "Bu dönem için analiz edilecek işlem verisi bulunmuyor.",
         savingsScore: 0,
@@ -20,7 +20,19 @@ export async function getSpendingAnalysis(transactions: Transaction[]): Promise<
   const transactionsString = transactions
     .map(t => {
       const subCategory = t.subCategory ? `, Sub-category: ${t.subCategory}` : '';
-      return `- Date: ${t.date.toISOString().split('T')[0]}, Type: ${t.type}, Amount: ${t.amount}, Category: ${t.category}${subCategory}, Description: "${t.description}"`;
+      
+      // Dates are serialized as strings when passed to Server Actions
+      let dateStr = 'Bilinmeyen Tarih';
+      try {
+        const dateObj = new Date(t.date);
+        if (!isNaN(dateObj.getTime())) {
+          dateStr = dateObj.toISOString().split('T')[0];
+        }
+      } catch (e) {
+        // Fallback to unknown
+      }
+      
+      return `- Tarih: ${dateStr}, Tür: ${t.type}, Tutar: ${t.amount}, Kategori: ${t.category}${subCategory}, Açıklama: "${t.description}"`;
     })
     .join('\n');
 
