@@ -4,290 +4,410 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user's profile in the FinTrack Personal application.",
+      "description": "Uygulamanın bir kullanıcısını temsil eder, kişisel ayarları saklar ve kullanıcıya ait verilere bağlantı sağlar. Harici bir kimlik doğrulama sistemi olduğu varsayılır.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the UserProfile entity."
+          "description": "UserProfile varlığı için benzersiz tanımlayıcı."
+        },
+        "name": {
+          "type": "string",
+          "description": "Kullanıcının görünen adı."
         },
         "email": {
           "type": "string",
-          "description": "User's email address.",
+          "description": "Kullanıcının e-posta adresi (tanımlama amaçlıdır, kimlik doğrulama için değil).",
           "format": "email"
         },
-        "username": {
-          "type": "string",
-          "description": "The user's username."
-        },
-        "firstName": {
-          "type": "string",
-          "description": "The user's first name."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The user's last name."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user profile was created.",
-          "format": "date-time"
+        "defaultBreakDurationMinutes": {
+          "type": "number",
+          "description": "Çalışma takibi hesaplamalarında kullanılan varsayılan mola süresi (dakika cinsinden)."
         }
       },
       "required": [
         "id",
+        "name",
         "email",
-        "username",
-        "firstName",
-        "lastName",
-        "createdAt"
+        "defaultBreakDurationMinutes"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Finansal işlemler için bir kategori tanımlar ve hiyerarşik alt kategorilere izin verir. Kategoriler, oluşturan kullanıcıya özeldir.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Category varlığı için benzersiz tanımlayıcı."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Bu kategorinin sahibi olan UserProfile'a referans. (İlişki: UserProfile 1:N Category)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Kategorinin adı (örneğin, 'Gıda', 'Ulaşım')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Kategorinin kısa bir açıklaması."
+        },
+        "parentCategoryId": {
+          "type": "string",
+          "description": "Alt kategoriler oluşturmak için üst kategoriye referans. Üst düzey bir kategori ise null olabilir. (İlişki: Category 1:N Category)"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "description"
       ]
     },
     "Transaction": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Transaction",
       "type": "object",
-      "description": "Represents a single financial transaction.",
+      "description": "Bir kullanıcı için tek bir finansal gelir veya gider olayını kaydeder.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Transaction varlığı için benzersiz tanımlayıcı."
+        },
         "userId": {
           "type": "string",
-          "description": "The ID of the user who owns this transaction."
-        },
-        "date": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The date and time of the transaction."
+          "description": "Bu işlemin sahibi olan UserProfile'a referans. (İlişki: UserProfile 1:N Transaction)"
         },
         "amount": {
           "type": "number",
-          "description": "The amount of the transaction."
+          "description": "İşlemin parasal miktarı."
         },
         "type": {
           "type": "string",
-          "enum": [
-            "Income",
-            "Expense"
-          ],
-          "description": "The type of transaction."
+          "description": "İşlem türü, 'income' (gelir) veya 'expense' (gider).",
+          "format": "string",
+          "items": {
+            "type": "string"
+          }
         },
-        "category": {
+        "transactionDate": {
           "type": "string",
-          "description": "The category of the transaction."
-        },
-        "subCategory": {
-          "type": "string",
-          "description": "The sub-category of the transaction."
+          "description": "İşlemin gerçekleştiği belirli tarih ve saat.",
+          "format": "date-time"
         },
         "description": {
           "type": "string",
-          "description": "A description of the transaction."
+          "description": "İşlem için kısa bir açıklama veya not."
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Bu işlem için ana Kategoriye referans. (İlişki: Category 1:N Transaction)"
+        },
+        "subCategoryId": {
+          "type": "string",
+          "description": "Bu işlem için isteğe bağlı bir alt Kategoriye referans. (İlişki: Category 1:N Transaction)"
         }
       },
       "required": [
+        "id",
         "userId",
-        "date",
         "amount",
         "type",
-        "category",
-        "description"
+        "transactionDate",
+        "description",
+        "categoryId"
       ]
     },
-    "Goal": {
+    "RecurringTransaction": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Savings Goal",
-      "description": "Represents a user's savings goal.",
+      "title": "RecurringTransaction",
       "type": "object",
+      "description": "Bir kullanıcı için abonelikler, düzenli gelir veya düzenli faturalar gibi yinelenen finansal işlemleri yönetir.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "RecurringTransaction varlığı için benzersiz tanımlayıcı."
+        },
         "userId": {
           "type": "string",
-          "description": "The ID of the user who owns this goal."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the goal (e.g., 'Vacation Fund')."
-        },
-        "targetAmount": {
-          "type": "number",
-          "description": "The target amount to save for the goal."
-        },
-        "currentAmount": {
-          "type": "number",
-          "description": "The current amount saved towards the goal."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp for when the goal was created."
-        }
-      },
-      "required": [
-        "userId",
-        "name",
-        "targetAmount",
-        "currentAmount",
-        "createdAt"
-      ]
-    },
-    "Subscription": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Subscription",
-      "description": "Represents a recurring subscription payment.",
-      "type": "object",
-      "properties": {
-        "userId": {
-          "type": "string",
-          "description": "The ID of the user who owns this subscription."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the subscription (e.g., 'Netflix')."
+          "description": "Bu yinelenen işlemin sahibi olan UserProfile'a referans. (İlişki: UserProfile 1:N RecurringTransaction)"
         },
         "amount": {
           "type": "number",
-          "description": "The amount paid for the subscription."
+          "description": "Yinelenen işlemin her bir oluşumunun parasal miktarı."
         },
-        "category": {
+        "type": {
           "type": "string",
-          "description": "The category of the subscription."
+          "description": "Yinelenen işlem türü, 'income' (gelir) veya 'expense' (gider).",
+          "format": "string",
+          "items": {
+            "type": "string"
+          }
         },
-        "frequency": {
+        "description": {
           "type": "string",
-          "enum": [
-            "monthly",
-            "yearly"
-          ],
-          "description": "How often the subscription recurs."
+          "description": "Yinelenen işlem için kısa bir açıklama veya ad (örneğin, 'Netflix Aboneliği')."
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Bu yinelenen işlem için Kategoriye referans. (İlişki: Category 1:N RecurringTransaction)"
         },
         "startDate": {
           "type": "string",
-          "format": "date-time",
-          "description": "The date the subscription started or the next payment is due."
+          "description": "Yinelenen işlemin başladığı tarih.",
+          "format": "date"
+        },
+        "recurrenceFrequency": {
+          "type": "string",
+          "description": "İşlemin ne sıklıkta tekrar ettiği (örneğin, 'monthly', 'weekly').",
+          "format": "string",
+          "items": {
+            "type": "string"
+          }
+        },
+        "endDate": {
+          "type": "string",
+          "description": "Yinelenen işlem için isteğe bağlı bitiş tarihi. Null ise, süresiz olarak yinelenir.",
+          "format": "date"
         }
       },
       "required": [
+        "id",
         "userId",
-        "name",
         "amount",
-        "category",
-        "frequency",
-        "startDate"
+        "type",
+        "description",
+        "categoryId",
+        "startDate",
+        "recurrenceFrequency"
       ]
     },
-    "Student": {
+    "Event": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Student",
-      "description": "Represents a student taking lessons.",
+      "title": "Event",
       "type": "object",
+      "description": "Takvimde bir kullanıcı için genel planlanmış bir etkinliği veya randevuyu temsil eder, isteğe bağlı tekrar özelliği vardır.",
       "properties": {
-        "userId": {
+        "id": {
           "type": "string",
-          "description": "The ID of the user (teacher) who owns this student record."
+          "description": "Event varlığı için benzersiz tanımlayıcı."
         },
-        "name": {
+        "creatorUserId": {
           "type": "string",
-          "description": "The name of the student."
+          "description": "Bu etkinliği oluşturan UserProfile'a referans. (İlişki: UserProfile 1:N Event)"
         },
-        "balance": {
-          "type": "number",
-          "description": "The student's current financial balance. Positive is credit, negative is debt."
-        },
-        "lessonPrice": {
-          "type": "number",
-          "description": "The price of a single lesson for this student."
-        },
-        "createdAt": {
+        "title": {
           "type": "string",
-          "format": "date-time",
-          "description": "Timestamp for when the student was added."
-        }
-      },
-      "required": [
-        "userId",
-        "name",
-        "balance",
-        "lessonPrice",
-        "createdAt"
-      ]
-    },
-    "LessonLog": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "LessonLog",
-      "description": "Represents a log of a completed lesson for a student.",
-      "type": "object",
-      "properties": {
-        "userId": {
-          "type": "string",
-          "description": "The ID of the user (teacher) who owns this lesson log."
-        },
-        "studentId": {
-          "type": "string",
-          "description": "The ID of the student who took the lesson."
-        },
-        "studentName": {
-            "type": "string",
-            "description": "The name of the student (denormalized)."
-        },
-        "date": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp for when the lesson was completed."
-        },
-        "lessonPrice": {
-          "type": "number",
-          "description": "The price of the completed lesson."
-        }
-      },
-      "required": [
-        "userId",
-        "studentId",
-        "studentName",
-        "date",
-        "lessonPrice"
-      ]
-    },
-    "BalanceLog": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "BalanceLog",
-      "description": "Represents a log of a balance change for a student.",
-      "type": "object",
-      "properties": {
-        "userId": {
-            "type": "string",
-            "description": "The ID of the user (teacher) who owns this balance log."
-        },
-        "studentId": {
-            "type": "string",
-            "description": "The ID of the student whose balance changed."
-        },
-        "studentName": {
-            "type": "string",
-            "description": "The name of the student (denormalized)."
-        },
-        "date": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp for when the balance change occurred."
-        },
-        "amountChanged": {
-            "type": "number",
-            "description": "The amount the balance changed by (positive for additions, negative for deductions)."
-        },
-        "newBalance": {
-            "type": "number",
-            "description": "The student's new balance after the change."
+          "description": "Etkinliğin başlığı."
         },
         "description": {
-            "type": "string",
-            "description": "A description of the event that caused the balance change."
+          "type": "string",
+          "description": "Etkinliğin detaylı açıklaması."
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Etkinliğin başlangıç tarihi ve saati.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "Etkinliğin bitiş tarihi ve saati.",
+          "format": "date-time"
+        },
+        "eventType": {
+          "type": "string",
+          "description": "Etkinlik kategorisi, 'İş' veya 'Özel'.",
+          "format": "string",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isShared": {
+          "type": "boolean",
+          "description": "Etkinliğin diğer bağlantılı kullanıcılara (örneğin, eş) görünür olup olmadığını belirtir."
+        },
+        "recurrenceRule": {
+          "type": "string",
+          "description": "Etkinlik için tekrar kuralını (örneğin, iCal RRULE formatını kullanarak) temsil eden isteğe bağlı bir dize."
         }
       },
       "required": [
+        "id",
+        "creatorUserId",
+        "title",
+        "startTime",
+        "endTime",
+        "eventType",
+        "isShared"
+      ]
+    },
+    "WorkRule": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkRule",
+      "type": "object",
+      "description": "Bir kullanıcı için yinelenen bir çalışma programı modelini tanımlar ve çalışma günlüğü girdileri oluşturabilir.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "WorkRule varlığı için benzersiz tanımlayıcı."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Bu çalışma kuralının sahibi olan UserProfile'a referans. (İlişki: UserProfile 1:N WorkRule)"
+        },
+        "title": {
+          "type": "string",
+          "description": "Çalışma kuralı için açıklayıcı bir başlık (örneğin, 'Hafta İçi Mesai', 'Vardiya A')."
+        },
+        "workScheduleType": {
+          "type": "string",
+          "description": "Bu kuralın temsil ettiği çalışma programı türü.",
+          "format": "string",
+          "items": {
+            "type": "string"
+          }
+        },
+        "defaultDailyStartTime": {
+          "type": "string",
+          "description": "Geçerli günlerde iş için varsayılan başlangıç saati (örneğin, '09:00').",
+          "format": "time"
+        },
+        "defaultDailyEndTime": {
+          "type": "string",
+          "description": "Geçerli günlerde iş için varsayılan bitiş saati (örneğin, '18:00').",
+          "format": "time"
+        },
+        "daysOfWeek": {
+          "type": "array",
+          "description": "Bu kuralın uygulandığı haftanın günlerini içeren bir dizi (örneğin, 'Pzt', 'Sal').",
+          "items": {
+            "type": "string"
+          }
+        },
+        "customBreakDurationMinutes": {
+          "type": "number",
+          "description": "Bu belirli çalışma kuralı için isteğe bağlı özel mola süresi (dakika cinsinden), kullanıcının varsayılanını geçersiz kılar."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Çalışma kuralının şu anda etkin olup olmadığını ve çalışma günlüğü önerileri oluşturması gerekip gerekmediğini belirtir."
+        }
+      },
+      "required": [
+        "id",
         "userId",
-        "studentId",
-        "studentName",
+        "title",
+        "workScheduleType",
+        "defaultDailyStartTime",
+        "defaultDailyEndTime",
+        "daysOfWeek",
+        "isActive"
+      ]
+    },
+    "WorkLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkLog",
+      "type": "object",
+      "description": "Bir kullanıcı için belirli bir günün çalışma etkinliğini, gerçek zamanları, molaları ve durumu kaydeden bir giriş. Bir WorkRule'dan türetilmiş bir örnek veya manuel bir giriş/istisna olabilir.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "WorkLog varlığı için benzersiz tanımlayıcı."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Bu çalışma günlüğünü kaydeden UserProfile'a referans. (İlişki: UserProfile 1:N WorkLog)"
+        },
+        "date": {
+          "type": "string",
+          "description": "Bu çalışma günlüğü girişi için belirli takvim tarihi.",
+          "format": "date"
+        },
+        "actualStartTime": {
+          "type": "string",
+          "description": "Günün iş başlangıcının gerçek tarihi ve saati.",
+          "format": "date-time"
+        },
+        "actualEndTime": {
+          "type": "string",
+          "description": "Günün iş bitişinin gerçek tarihi ve saati.",
+          "format": "date-time"
+        },
+        "actualBreakDurationMinutes": {
+          "type": "number",
+          "description": "Bu çalışma günlüğü için alınan molaların gerçek süresi (dakika cinsinden)."
+        },
+        "totalWorkDurationMinutes": {
+          "type": "number",
+          "description": "Uygulama mantığı tarafından hesaplanan toplam etkili çalışma süresi (dakika cinsinden) (actualEndTime - actualStartTime - actualBreakDurationMinutes)."
+        },
+        "overtimeMinutes": {
+          "type": "number",
+          "description": "Beklenen saatlere göre bu çalışma günlüğü için isteğe bağlı olarak hesaplanan fazla mesai (dakika cinsinden)."
+        },
+        "isBusy": {
+          "type": "boolean",
+          "description": "Bu çalışma günlüğü süresince kullanıcının 'Meşgul' (true) veya 'Müsait' (false) olup olmadığını belirtir."
+        },
+        "workRuleId": {
+          "type": "string",
+          "description": "Bu günlüğün başlangıçta türetildiği veya bir istisna olduğu WorkRule'a isteğe bağlı referans. (İlişki: WorkRule 1:N WorkLog)"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Bu belirli çalışma günlüğü girişiyle ilgili isteğe bağlı notlar."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
         "date",
-        "amountChanged",
-        "newBalance",
-        "description"
+        "actualStartTime",
+        "actualEndTime",
+        "actualBreakDurationMinutes",
+        "totalWorkDurationMinutes",
+        "isBusy"
+      ]
+    },
+    "Birthday": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Birthday",
+      "type": "object",
+      "description": "Yıllık hatırlatıcılar için doğum günü bilgilerini saklar.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Birthday varlığı için benzersiz tanımlayıcı."
+        },
+        "creatorUserId": {
+          "type": "string",
+          "description": "Bu doğum gününü giren UserProfile'a referans. (İlişki: UserProfile 1:N Birthday)"
+        },
+        "personName": {
+          "type": "string",
+          "description": "Doğum günü takip edilen kişinin adı."
+        },
+        "birthDate": {
+          "type": "string",
+          "description": "Belirli doğum tarihi (yıl yakalanabilir ancak yıllık tekrar için yalnızca ay/gün kullanılır).",
+          "format": "date"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Doğum günüyle ilgili isteğe bağlı notlar."
+        },
+        "isShared": {
+          "type": "boolean",
+          "description": "Doğum günü hatırlatıcısının diğer bağlantılı kullanıcılara (örneğin, eş) görünür olup olmadığını belirtir."
+        }
+      },
+      "required": [
+        "id",
+        "creatorUserId",
+        "personName",
+        "birthDate",
+        "isShared"
       ]
     }
   },
@@ -306,11 +426,31 @@
           "schema": {
             "$ref": "#/backend/entities/UserProfile"
           },
-          "description": "Stores user profile information. Uses path-based ownership for security. No denormalized authorization data.",
+          "description": "Kullanıcının kişisel profil bilgilerini ve uygulama ayarlarını içeren tekil belge. Doküman kimliği, kimliği doğrulanmış kullanıcının UID'si (`request.auth.uid`) ile eşleşir.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier of the user."
+              "description": "Kullanıcının Firebase Authentication UID'si."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Her kullanıcının tanımladığı gelir ve gider kategorilerini ve alt kategorilerini içerir. Yetkilendirme bağımsızlığı için doküman içinde 'userId' alanını içerir.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Bu kategorinin sahibi olan kullanıcının Firebase Authentication UID'si."
+            },
+            {
+              "name": "categoryId",
+              "description": "Kategorinin benzersiz tanımlayıcısı."
             }
           ]
         }
@@ -322,124 +462,40 @@
           "schema": {
             "$ref": "#/backend/entities/Transaction"
           },
-          "description": "Stores individual financial transactions for a user.",
+          "description": "Kullanıcının manuel olarak girdiği tek seferlik finansal işlemlerini (gelir/gider) içerir. Yetkilendirme bağımsızlığı için doküman içinde 'userId' alanını içerir.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier of the user."
+              "description": "Bu işlemin sahibi olan kullanıcının Firebase Authentication UID'si."
             },
             {
               "name": "transactionId",
-              "description": "The unique identifier of the transaction."
+              "description": "İşlemin benzersiz tanımlayıcısı."
             }
           ]
         }
       },
       {
-        "path": "/users/{userId}/goals/{goalId}",
+        "path": "/users/{userId}/recurringTransactions/{recurringTransactionId}",
         "definition": {
-          "entityName": "Goal",
+          "entityName": "RecurringTransaction",
           "schema": {
-            "$ref": "#/backend/entities/Goal"
+            "$ref": "#/backend/entities/RecurringTransaction"
           },
-          "description": "Stores individual savings goals for a user.",
+          "description": "Kullanıcının tanımladığı yinelenen finansal işlemlerini (abonelikler, düzenli gelirler) içerir. Yetkilendirme bağımsızlığı için doküman içinde 'userId' alanını içerir.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier of the user."
+              "description": "Bu yinelenen işlemin sahibi olan kullanıcının Firebase Authentication UID'si."
             },
             {
-              "name": "goalId",
-              "description": "The unique identifier of the goal."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/subscriptions/{subscriptionId}",
-        "definition": {
-          "entityName": "Subscription",
-          "schema": {
-            "$ref": "#/backend/entities/Subscription"
-          },
-          "description": "Stores individual subscriptions for a user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "subscriptionId",
-              "description": "The unique identifier of the subscription."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/students/{studentId}",
-        "definition": {
-          "entityName": "Student",
-          "schema": {
-            "$ref": "#/backend/entities/Student"
-          },
-          "description": "Stores individual student records for a user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "studentId",
-              "description": "The unique identifier of the student."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/students/{studentId}/balanceLogs/{balanceLogId}",
-        "definition": {
-            "entityName": "BalanceLog",
-            "schema": {
-                "$ref": "#/backend/entities/BalanceLog"
-            },
-            "description": "Stores a log of balance changes for a specific student.",
-            "params": [
-                {
-                    "name": "userId",
-                    "description": "The unique identifier of the user."
-                },
-                {
-                    "name": "studentId",
-                    "description": "The unique identifier of the student."
-                },
-                {
-                    "name": "balanceLogId",
-                    "description": "The unique identifier of the balance log entry."
-                }
-            ]
-        }
-      },
-      {
-        "path": "/users/{userId}/lessonLogs/{lessonLogId}",
-        "definition": {
-          "entityName": "LessonLog",
-          "schema": {
-            "$ref": "#/backend/entities/LessonLog"
-          },
-          "description": "Stores logs of completed lessons for a user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "lessonLogId",
-              "description": "The unique identifier of the lesson log."
+              "name": "recurringTransactionId",
+              "description": "Yinelenen işlemin benzersiz tanımlayıcısı."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to manage user-specific data securely and efficiently under a single `/users/{userId}` document tree. This path-based ownership model provides excellent security and simplifies rules. Subcollections like transactions, goals, subscriptions, and students are nested under each user to enforce ownership and for data locality. This facilitates simple, robust, and easily debuggable security rules. There is no denormalized authorization data."
+    "reasoning": "Bu tasarım, 'FinTrack Personal' uygulamasının kişisel finans yönetimi ihtiyaçlarını karşılamak üzere tasarlanmıştır. Temel prensip, her kullanıcının verisinin izole edilmiş ve net bir şekilde sahiplenilmiş olmasıdır. Tüm finansal veriler (Kategoriler, İşlemler, Tekrarlayan İşlemler) '/users/{userId}' yolu altında yuvalandırılmıştır. Bu yapı, veri erişiminin kullanıcının kendi verileriyle sınırlı kalmasını garanti eder ve Firebase Güvenlik Kurallarını basitleştirir. Authorization Independence (Yetkilendirme Bağımsızlığı) ilkesi, her bir belgeye (Category, Transaction, RecurringTransaction) sahip olan 'userId' alanını ekleyerek sağlanmıştır. Bu denormalizasyon, güvenlik kurallarının üst bir belgeye 'get()' işlemi yapma ihtiyacını ortadan kaldırır, böylece atomik işlemleri (işlemler veya toplu yazımlar) destekler ve kuralların hata ayıklamasını kolaylaştırır. QAPs (Query As Protection/Kurallar Filtre Değildir) ilkesi, her kullanıcının verisinin kendi '/users/{userId}' alt koleksiyonunda tutulmasıyla sağlanır. Bu sayede, bir kullanıcının yaptığı herhangi bir 'list' (sorgu) işlemi, güvenlik kuralları tarafından yalnızca kendi sahip olduğu verileri döndürecek şekilde doğal olarak kısıtlanır; başka bir kullanıcının verisine yanlışlıkla veya kötü niyetle erişim engellenir. Bu yapı, yetkilendirme amacını açıkça belirtir ve genişletilebilirlik, güvenlik ve hata ayıklama kolaylığı sağlar. 'Event', 'WorkRule', 'WorkLog' ve 'Birthday' varlıkları, 'FinTrack Personal' uygulamasının mevcut kapsamına dahil olmadığından Firestore yapısında yer almamaktadır."
   }
 }
