@@ -34,6 +34,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { cn } from '@/lib/utils';
+import { DollarSign } from 'lucide-react';
 
 const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
@@ -54,6 +55,7 @@ const formSchema = z.object({
   days: z.array(z.string()).min(1, { message: 'En az bir gün seçilmelidir.' }),
   breakMinutes: z.coerce.number().default(30),
   color: z.string().default('#a855f7'),
+  hourlyRate: z.coerce.number().min(0).default(0),
 });
 
 type AddWorkRuleSheetProps = {
@@ -62,9 +64,13 @@ type AddWorkRuleSheetProps = {
 };
 
 export function AddWorkRuleSheet({ isOpen, onOpenChange }: AddWorkRuleSheetProps) {
-  const { user } = useUser();
+  const { user } = userHooks();
   const firestore = useFirestore();
   const { toast } = useToast();
+
+  function userHooks() {
+      return useUser();
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -76,6 +82,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: AddWorkRuleSheetProps
       days: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum'],
       breakMinutes: 30,
       color: user?.email === 'tubakodak8@gmail.com' ? '#a855f7' : '#ef4444',
+      hourlyRate: 15,
     },
   });
 
@@ -92,18 +99,19 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: AddWorkRuleSheetProps
       customBreakDurationMinutes: values.breakMinutes,
       isActive: true,
       color: values.color,
+      hourlyRate: values.hourlyRate,
     });
     form.reset();
     onOpenChange(false);
-    toast({ title: 'Kural Oluşturuldu', description: 'Çalışma düzeni başarıyla eklendi.' });
+    toast({ title: 'Kural Oluşturuldu', description: 'Çalışma düzeni ve saatlik ücret başarıyla eklendi.' });
   }
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent>
+      <SheetContent className="overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Çalışma Düzeni Ekle</SheetTitle>
-          <SheetDescription>Tekrarlayan mesai saatlerinizi ve renginizi belirleyin.</SheetDescription>
+          <SheetDescription>Tekrarlayan mesai saatlerinizi, ücretinizi ve renginizi belirleyin.</SheetDescription>
         </SheetHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-6">
@@ -118,6 +126,25 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: AddWorkRuleSheetProps
                 </FormItem>
               )}
             />
+            
+            <FormField
+              control={form.control}
+              name="hourlyRate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Saatlik Ücret (€)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input type="number" step="0.5" className="pl-10" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormDescription>Bu düzendeki mesailer için kazanç hesabı yapılacaktır.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="color"

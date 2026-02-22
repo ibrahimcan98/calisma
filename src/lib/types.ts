@@ -99,6 +99,7 @@ export type WorkRule = {
   customBreakDurationMinutes?: number;
   isActive: boolean;
   color?: string; // Color for the shift
+  hourlyRate?: number; // Added: Rate per hour for salary calculation
 };
 
 export type WorkLog = {
@@ -114,6 +115,7 @@ export type WorkLog = {
   workRuleId?: string;
   notes?: string;
   color?: string; // Inherited from rule
+  earningsAtTime?: number; // Store how much was earned at that log
 };
 
 export type Birthday = {

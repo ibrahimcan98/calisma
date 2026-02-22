@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { categories as initialCategories } from '@/lib/data';
-import type { Transaction, Category } from '@/lib/types';
+import type { Transaction, Category, WorkRule, WorkLog } from '@/lib/types';
 import { Header } from '@/components/header';
 import {
   Card,
@@ -22,26 +22,21 @@ import {
   History,
   Scale,
   PiggyBank,
+  Briefcase,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TransactionsTable } from './transactions-table';
 import { AddTransactionSheet } from './add-transaction-sheet';
 import { ExpenditureAnalysisDialog } from './expenditure-analysis-dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, query, where } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { startOfMonth, subMonths, differenceInCalendarMonths } from 'date-fns';
+import { startOfMonth, subMonths, differenceInCalendarMonths, isSameWeek, startOfWeek, endOfWeek } from 'date-fns';
 import { SavingsGoals } from './savings-goals';
 import { SubscriptionsPanel } from './subscriptions-panel';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 
 export function Dashboard() {
@@ -59,29 +54,71 @@ export function Dashboard() {
     setIsMounted(true);
   }, []);
 
+  // Transactions
   const transactionsCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, 'users', user.uid, 'transactions');
   }, [firestore, user]);
-
   const { data: rawTransactions } = useCollection<Omit<Transaction, 'id'>>(transactionsCollectionRef);
+
+  // Work Rules (for hourly rates)
+  const workRulesCollectionRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, 'users', user.uid, 'workRules');
+  }, [firestore, user]);
+  const { data: workRules } = useCollection<WorkRule>(workRulesCollectionRef);
+
+  // Work Logs (for earnings)
+  const workLogsCollectionRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, 'users', user.uid, 'workLogs');
+  }, [firestore, user]);
+  const { data: rawWorkLogs } = useCollection<Omit<WorkLog, 'id'>>(workLogsCollectionRef);
 
   const transactions = useMemo(() => {
     if (!rawTransactions) return [];
     return rawTransactions.map(t => ({
       ...t,
-      // Firestore returns timestamps, convert them to JS Date objects
       date: (t.date as any).toDate(),
     }));
   }, [rawTransactions]);
 
-  // Show all transactions, sorted by most recent
-  const sortedTransactions = useMemo(() => {
-    return [...transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
-  }, [transactions]);
+  const workLogs = useMemo(() => {
+    if (!rawWorkLogs) return [];
+    return rawWorkLogs.map(l => ({
+      ...l,
+      date: (l.date as any).toDate(),
+    }));
+  }, [rawWorkLogs]);
 
+  // Calculate earnings from work logs
+  const salaryStats = useMemo(() => {
+    if (!isMounted || !workRules || workLogs.length === 0) {
+      return { totalSalaryEarned: 0, thisWeekSalary: 0 };
+    }
+
+    const now = new Date();
+    let totalSalaryEarned = 0;
+    let thisWeekSalary = 0;
+
+    for (const log of workLogs) {
+      const rule = workRules.find(r => r.id === log.workRuleId);
+      if (rule && rule.hourlyRate) {
+        const earnings = (log.totalWorkDurationMinutes / 60) * rule.hourlyRate;
+        totalSalaryEarned += earnings;
+
+        if (isSameWeek(log.date, now, { weekStartsOn: 1 })) {
+          thisWeekSalary += earnings;
+        }
+      }
+    }
+
+    return { totalSalaryEarned, thisWeekSalary };
+  }, [workLogs, workRules, isMounted]);
+
+  // Combined financial stats
   const stats = useMemo(() => {
-    if (!isMounted || transactions.length === 0) {
+    if (!isMounted) {
       return {
         balance: 0,
         totalIncome: 0,
@@ -97,7 +134,7 @@ export function Dashboard() {
     const startOfCurrentMonth = startOfMonth(now);
     const startOfLastMonth = startOfMonth(subMonths(now, 1));
     
-    let totalIncome = 0;
+    let incomeFromTransactions = 0;
     let totalExpenses = 0;
     let currentMonthExpenses = 0;
     let lastMonthExpenses = 0;
@@ -105,7 +142,7 @@ export function Dashboard() {
 
     for (const t of transactions) {
         if (t.type === 'Income') {
-            totalIncome += t.amount;
+            incomeFromTransactions += t.amount;
             if (t.date >= startOfLastMonth && t.date < startOfCurrentMonth) {
                 lastMonthIncome += t.amount;
             }
@@ -118,6 +155,10 @@ export function Dashboard() {
             }
         }
     }
+
+    // Add salary to income and last month calcs if appropriate
+    // For simplicity, we add all salary earned to totalIncome
+    const totalIncome = incomeFromTransactions + salaryStats.totalSalaryEarned;
 
     const oldestTransaction = transactions.length > 0 ? transactions.reduce((earliest, t) => earliest.date > t.date ? t : earliest) : {date: new Date()};
     const totalMonths = differenceInCalendarMonths(now, oldestTransaction.date) + 1;
@@ -133,8 +174,12 @@ export function Dashboard() {
       averageMonthlyExpense,
       lastMonthSavings,
     };
-  }, [transactions, isMounted]);
+  }, [transactions, salaryStats, isMounted]);
   
+  const sortedTransactions = useMemo(() => {
+    return [...transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [transactions]);
+
   useEffect(() => {
     if (isMounted) {
       setEditableLastMonthSavings(stats.lastMonthSavings.toFixed(2));
@@ -169,8 +214,7 @@ export function Dashboard() {
   };
   
   const formatCurrency = (amount: number) => {
-    const locale = 'de-DE';
-    return new Intl.NumberFormat(locale, {
+    return new Intl.NumberFormat('de-DE', {
       style: 'currency',
       currency: 'EUR',
     }).format(amount);
@@ -220,7 +264,7 @@ export function Dashboard() {
     <div className="flex min-h-screen w-full flex-col">
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Toplam Gelir</CardTitle>
@@ -231,26 +275,26 @@ export function Dashboard() {
                 {formatCurrency(stats.totalIncome)}
               </div>
               <p className="text-xs text-muted-foreground">
-                Tüm zamanlar
+                Manuel Gelir + Maaş Kazancı
               </p>
             </CardContent>
           </Card>
-          <Card>
+
+          <Card className="bg-primary/5 border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Toplam Gider
-              </CardTitle>
-              <ArrowDownCircle className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Maaş Kazancı</CardTitle>
+              <Briefcase className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(stats.totalExpenses)}
+              <div className="text-2xl font-bold text-primary">
+                {formatCurrency(salaryStats.totalSalaryEarned)}
               </div>
               <p className="text-xs text-muted-foreground">
-                Tüm zamanlar
+                Tüm mesailerden hesaplanan
               </p>
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Bakiye</CardTitle>
@@ -261,22 +305,37 @@ export function Dashboard() {
                 {formatCurrency(stats.balance)}
               </div>
               <p className="text-xs text-muted-foreground">
-                Toplam Gelir - Toplam Gider
+                Güncel net bakiye
               </p>
             </CardContent>
           </Card>
-          <Card>
+
+          <Card className="border-accent/40">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Cuma Ödemesi (Tahmini)</CardTitle>
+              <TrendingUp className="h-4 w-4 text-accent" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-accent">
+                {formatCurrency(salaryStats.thisWeekSalary)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Bu hafta Cuma beklenen maaş
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Bu Ayki Gider</CardTitle>
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-bold text-red-600">
                 {formatCurrency(stats.currentMonthExpenses)}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Bu ayki toplam harcama
-              </p>
             </CardContent>
           </Card>
           <Card>
@@ -288,23 +347,6 @@ export function Dashboard() {
               <div className="text-2xl font-bold">
                 {formatCurrency(stats.lastMonthExpenses)}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Geçen ayki toplam harcama
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ortalama Aylık Gider</CardTitle>
-              <Scale className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(stats.averageMonthlyExpense)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Hesaplanan aylık ortalama
-              </p>
             </CardContent>
           </Card>
            <Card>
@@ -319,9 +361,6 @@ export function Dashboard() {
                   onChange={(e) => setEditableLastMonthSavings(e.target.value)}
                   className="text-2xl font-bold h-auto p-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
                 />
-              <p className="text-xs text-muted-foreground">
-                Geçen ayki gelir - gider farkı (düzenlenebilir)
-              </p>
             </CardContent>
             {parseFloat(editableLastMonthSavings) > 0 && !hasCarryOverForCurrentMonth && (
               <CardFooter>

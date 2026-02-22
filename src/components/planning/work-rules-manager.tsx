@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Clock, PlayCircle, CalendarDays, CalendarRange } from 'lucide-react';
+import { Plus, Trash2, Clock, PlayCircle, CalendarDays, CalendarRange, DollarSign } from 'lucide-react';
 import type { WorkRule, WorkLog } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
@@ -114,12 +114,19 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
     }
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(amount);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Çalışma Düzenleri</h2>
-          <p className="text-sm text-muted-foreground">Sabit veya esnek çalışma rutinlerinizi tanımlayın.</p>
+          <p className="text-sm text-muted-foreground">Sabit veya esnek çalışma rutinlerinizi ve saatlik ücretlerinizi tanımlayın.</p>
         </div>
         <Button onClick={() => setIsAddRuleOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> Düzen Ekle
@@ -143,9 +150,15 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{rule.defaultDailyStartTime} - {rule.defaultDailyEndTime}</span>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{rule.defaultDailyStartTime} - {rule.defaultDailyEndTime}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <DollarSign className="h-4 w-4" />
+                  <span className="font-bold">{formatCurrency(rule.hourlyRate || 0)} / saat</span>
+                </div>
               </div>
               <div className="flex flex-wrap gap-1">
                 {rule.daysOfWeek.map(day => (
