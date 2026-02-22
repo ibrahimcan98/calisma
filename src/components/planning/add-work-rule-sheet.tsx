@@ -32,10 +32,12 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { cn } from '@/lib/utils';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, CalendarCheck } from 'lucide-react';
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
@@ -57,6 +59,7 @@ const formSchema = z.object({
   breakMinutes: z.coerce.number().default(30),
   color: z.string().default('#3b82f6'),
   hourlyRate: z.coerce.number().min(0).default(0),
+  applyTo: z.enum(['none', 'this-week', 'this-month']).default('none'),
 });
 
 export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: (isOpen: boolean) => void }) {
@@ -75,13 +78,15 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       breakMinutes: 30,
       color: '#3b82f6',
       hourlyRate: 15,
+      applyTo: 'none',
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user) return;
-    const ref = collection(firestore, 'users', user.uid, 'workRules');
-    addDocumentNonBlocking(ref, {
+    
+    const ruleRef = collection(firestore, 'users', user.uid, 'workRules');
+    const newRule = {
       userId: user.uid,
       title: values.title,
       workScheduleType: values.type,
@@ -92,7 +97,64 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       isActive: true,
       color: values.color,
       hourlyRate: values.hourlyRate,
-    });
+    };
+
+    // Rule'u kaydet
+    const docRef = await addDoc(ruleRef, newRule);
+    const ruleId = docRef.id;
+
+    // Eğer toplu ekleme seçildiyse
+    if (values.applyTo !== 'none') {
+      const logsRef = collection(firestore, 'users', user.uid, 'workLogs');
+      const now = new Date();
+      let start, end;
+
+      if (values.applyTo === 'this-week') {
+        start = startOfWeek(now, { weekStartsOn: 1 });
+        end = endOfWeek(now, { weekStartsOn: 1 });
+      } else {
+        start = startOfMonth(now);
+        end = endOfMonth(now);
+      }
+
+      const daysToApply = eachDayOfInterval({ start, end });
+      let count = 0;
+
+      daysToApply.forEach(day => {
+        const dayName = format(day, 'eee', { locale: tr });
+        if (values.days.includes(dayName)) {
+          const startTime = new Date(day);
+          const [h, m] = values.startTime.split(':').map(Number);
+          startTime.setHours(h, m, 0, 0);
+
+          const endTime = new Date(day);
+          const [eh, em] = values.endTime.split(':').map(Number);
+          endTime.setHours(eh, em, 0, 0);
+
+          const molaSuresi = values.breakMinutes || 30;
+          const totalMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60) - molaSuresi;
+
+          addDocumentNonBlocking(logsRef, {
+            userId: user.uid,
+            date: day,
+            actualStartTime: startTime,
+            actualEndTime: endTime,
+            actualBreakDurationMinutes: molaSuresi,
+            totalWorkDurationMinutes: totalMinutes,
+            isBusy: true,
+            workRuleId: ruleId,
+            notes: `${values.title} kapsamında toplu oluşturuldu.`,
+            color: values.color,
+          });
+          count++;
+        }
+      });
+
+      if (count > 0) {
+        toast({ title: 'Planlama Tamamlandı', description: `${count} günlük mesai takvime işlendi.` });
+      }
+    }
+
     form.reset();
     onOpenChange(false);
     toast({ title: 'Kural Oluşturuldu', description: 'Çalışma düzeni ve saatlik ücret başarıyla eklendi.' });
@@ -100,10 +162,10 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
+      <SheetContent className="overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Çalışma Düzeni Ekle</SheetTitle>
-          <SheetDescription>Tekrarlayan mesai saatlerinizi, ücretinizi ve renginizi belirleyin.</SheetDescription>
+          <SheetDescription>Tekrarlayan mesai saatlerinizi ve kazancınızı belirleyin.</SheetDescription>
         </SheetHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-6">
@@ -131,7 +193,6 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                       <Input type="number" step="0.5" className="pl-10" {...field} />
                     </div>
                   </FormControl>
-                  <FormDescription>Bu düzendeki mesailer için kazanç hesabı yapılacaktır.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -154,32 +215,13 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                         )}
                         style={{ backgroundColor: color.value }}
                         onClick={() => field.onChange(color.value)}
-                        title={color.name}
                       />
                     ))}
                   </div>
-                  <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Düzen Türü</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="Fixed">Sabit Saatli</SelectItem>
-                      <SelectItem value="Shift">Vardiyalı</SelectItem>
-                      <SelectItem value="Flexible">Esnek</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -202,6 +244,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                 )}
               />
             </div>
+
             <FormField
               control={form.control}
               name="days"
@@ -214,23 +257,21 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                         key={day}
                         control={form.control}
                         name="days"
-                        render={({ field }) => {
-                          return (
-                            <FormItem key={day} className="flex items-center space-x-2 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value?.includes(day)}
-                                  onCheckedChange={(checked) => {
-                                    return checked
-                                      ? field.onChange([...field.value, day])
-                                      : field.onChange(field.value?.filter((value) => value !== day));
-                                  }}
-                                />
-                              </FormControl>
-                              <FormLabel className="text-xs font-normal">{day}</FormLabel>
-                            </FormItem>
-                          );
-                        }}
+                        render={({ field }) => (
+                          <FormItem key={day} className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(day)}
+                                onCheckedChange={(checked) => {
+                                  return checked
+                                    ? field.onChange([...field.value, day])
+                                    : field.onChange(field.value?.filter((value) => value !== day));
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="text-xs font-normal">{day}</FormLabel>
+                          </FormItem>
+                        )}
                       />
                     ))}
                   </div>
@@ -238,8 +279,39 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                 </FormItem>
               )}
             />
+
+            <div className="bg-muted/50 p-4 rounded-lg space-y-4">
+              <div className="flex items-center gap-2">
+                <CalendarCheck className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold">Takvime Toplu Ekle</span>
+              </div>
+              <FormField
+                control={form.control}
+                name="applyTo"
+                render={({ field }) => (
+                  <FormItem>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Seçim yapın" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Sadece Kuralı Kaydet</SelectItem>
+                        <SelectItem value="this-week">Bu Haftaya İşle</SelectItem>
+                        <SelectItem value="this-month">Bu Aya İşle</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription className="text-[10px]">
+                      Kural kaydedildikten sonra seçilen döneme otomatik mesai kayıtları eklenir.
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <SheetFooter>
-              <Button type="submit" className="w-full">Düzeni Kaydet</Button>
+              <Button type="submit" className="w-full">Düzeni Kaydet ve Uygula</Button>
             </SheetFooter>
           </form>
         </Form>
