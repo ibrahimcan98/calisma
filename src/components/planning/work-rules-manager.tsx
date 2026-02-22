@@ -35,7 +35,7 @@ type WorkRulesManagerProps = {
 };
 
 export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
-  const { user } = useUser();
+  const { user } = user ? user : useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAddRuleOpen, setIsAddRuleOpen] = useState(false);
@@ -73,12 +73,20 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
         const alreadyExists = logs.some(l => isSameDay(l.date, day) && l.workRuleId === rule.id);
         
         if (!alreadyExists) {
+          let sTime = rule.defaultDailyStartTime;
+          let eTime = rule.defaultDailyEndTime;
+
+          if (rule.workScheduleType === 'Flexible' && rule.daySpecificTimes?.[dayName]) {
+            sTime = rule.daySpecificTimes[dayName].startTime;
+            eTime = rule.daySpecificTimes[dayName].endTime;
+          }
+
           const startTime = new Date(day);
-          const [h, m] = rule.defaultDailyStartTime.split(':').map(Number);
+          const [h, m] = sTime.split(':').map(Number);
           startTime.setHours(h, m, 0, 0);
 
           const endTime = new Date(day);
-          const [eh, em] = rule.defaultDailyEndTime.split(':').map(Number);
+          const [eh, em] = eTime.split(':').map(Number);
           endTime.setHours(eh, em, 0, 0);
 
           const molaSuresi = rule.customBreakDurationMinutes || 0;
@@ -93,7 +101,7 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
             totalWorkDurationMinutes: totalMinutes,
             isBusy: true,
             workRuleId: rule.id,
-            notes: `${rule.title} kapsamında ${period === 'today' ? 'bugün' : 'toplu'} oluşturuldu. Mola: ${molaSuresi} dk.`,
+            notes: `${rule.title} kapsamında ${period === 'today' ? 'bugün' : 'toplu'} oluşturuldu.`,
             color: rule.color,
           });
           count++;
@@ -126,14 +134,11 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Çalışma Düzenleri</h2>
-          <p className="text-sm text-muted-foreground">Sabit veya esnek çalışma rutinlerinizi, mola sürelerini ve saatlik ücretlerinizi tanımlayın.</p>
+          <p className="text-sm text-muted-foreground">Sabit veya esnek çalışma rutinlerinizi (hafta sonları dahil) yönetin.</p>
         </div>
-        <button 
-          onClick={() => setIsAddRuleOpen(true)}
-          className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground h-10 px-4 py-2 hover:bg-primary/90"
-        >
+        <Button onClick={() => setIsAddRuleOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> Düzen Ekle
-        </button>
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -144,7 +149,7 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
                 <div>
                   <CardTitle className="text-lg">{rule.title}</CardTitle>
                   <CardDescription>
-                    {rule.workScheduleType === 'Fixed' ? 'Sabit Mesai' : rule.workScheduleType === 'Shift' ? 'Vardiyalı' : 'Esnek'}
+                    {rule.workScheduleType === 'Fixed' ? 'Sabit Mesai' : 'Esnek Mesai'}
                   </CardDescription>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => handleDeleteRule(rule.id)}>
@@ -156,7 +161,11 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
               <div className="grid grid-cols-1 gap-2">
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{rule.defaultDailyStartTime} - {rule.defaultDailyEndTime}</span>
+                  {rule.workScheduleType === 'Fixed' ? (
+                    <span className="font-medium">{rule.defaultDailyStartTime} - {rule.defaultDailyEndTime}</span>
+                  ) : (
+                    <span className="font-medium">Gün bazlı değişken saatler</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-blue-600">
                   <Coffee className="h-4 w-4" />

@@ -35,7 +35,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { cn } from '@/lib/utils';
-import { DollarSign, CalendarCheck, Coffee } from 'lucide-react';
+import { DollarSign, CalendarCheck, Coffee, Clock } from 'lucide-react';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
@@ -52,10 +52,14 @@ const COLORS = [
 
 const formSchema = z.object({
   title: z.string().min(2, { message: 'Başlık gereklidir.' }),
-  type: z.enum(['Fixed', 'Shift', 'Flexible']),
+  type: z.enum(['Fixed', 'Flexible']),
   startTime: z.string().min(1),
   endTime: z.string().min(1),
   days: z.array(z.string()).min(1, { message: 'En az bir gün seçilmelidir.' }),
+  daySpecificTimes: z.record(z.object({
+    startTime: z.string(),
+    endTime: z.string(),
+  })).optional(),
   breakMinutes: z.coerce.number().min(0).default(30),
   color: z.string().default('#3b82f6'),
   hourlyRate: z.coerce.number().min(0).default(0),
@@ -75,12 +79,16 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       startTime: '09:00',
       endTime: '18:00',
       days: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum'],
+      daySpecificTimes: {},
       breakMinutes: 30,
       color: '#3b82f6',
       hourlyRate: 15,
       applyTo: 'none',
     },
   });
+
+  const watchType = form.watch('type');
+  const watchDays = form.watch('days');
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user) return;
@@ -93,6 +101,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       defaultDailyStartTime: values.startTime,
       defaultDailyEndTime: values.endTime,
       daysOfWeek: values.days,
+      daySpecificTimes: values.type === 'Flexible' ? values.daySpecificTimes : {},
       customBreakDurationMinutes: values.breakMinutes,
       isActive: true,
       color: values.color,
@@ -121,12 +130,20 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       daysToApply.forEach(day => {
         const dayName = format(day, 'eee', { locale: tr }).replace('.', '');
         if (values.days.includes(dayName)) {
+          let sTime = values.startTime;
+          let eTime = values.endTime;
+
+          if (values.type === 'Flexible' && values.daySpecificTimes?.[dayName]) {
+            sTime = values.daySpecificTimes[dayName].startTime;
+            eTime = values.daySpecificTimes[dayName].endTime;
+          }
+
           const startTime = new Date(day);
-          const [h, m] = values.startTime.split(':').map(Number);
+          const [h, m] = sTime.split(':').map(Number);
           startTime.setHours(h, m, 0, 0);
 
           const endTime = new Date(day);
-          const [eh, em] = values.endTime.split(':').map(Number);
+          const [eh, em] = eTime.split(':').map(Number);
           endTime.setHours(eh, em, 0, 0);
 
           const molaSuresi = values.breakMinutes || 0;
@@ -141,7 +158,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
             totalWorkDurationMinutes: totalMinutes,
             isBusy: true,
             workRuleId: ruleId,
-            notes: `${values.title} kapsamında toplu oluşturuldu. Mola: ${molaSuresi} dk.`,
+            notes: `${values.title} kapsamında toplu oluşturuldu.`,
             color: values.color,
           });
           count++;
@@ -155,7 +172,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
 
     form.reset();
     onOpenChange(false);
-    toast({ title: 'Kural Oluşturuldu', description: 'Çalışma düzeni ve saatlik ücret başarıyla eklendi.' });
+    toast({ title: 'Kural Oluşturuldu', description: 'Çalışma düzeni başarıyla eklendi.' });
   }
 
   return (
@@ -163,7 +180,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       <SheetContent className="overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Çalışma Düzeni Ekle</SheetTitle>
-          <SheetDescription>Tekrarlayan mesai saatlerinizi, mola sürenizi ve kazancınızı belirleyin.</SheetDescription>
+          <SheetDescription>Hafta sonları dahil mesai saatlerinizi ve düzeninizi belirleyin.</SheetDescription>
         </SheetHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-6">
@@ -175,6 +192,27 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                   <FormLabel>Düzen Adı</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mesai Türü</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Mesai türünü seçin" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Fixed">Sabit Mesai (Tüm günler aynı)</SelectItem>
+                      <SelectItem value="Flexible">Esnek Mesai (Gün bazlı farklı)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </FormItem>
               )}
             />
@@ -208,7 +246,6 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                         <Input type="number" className="pl-10" {...field} />
                       </div>
                     </FormControl>
-                    <FormDescription className="text-[10px]">Maşa dahil edilmez.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -239,28 +276,30 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="startTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Başlangıç</FormLabel>
-                    <FormControl><Input type="time" {...field} /></FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="endTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bitiş</FormLabel>
-                    <FormControl><Input type="time" {...field} /></FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
+            {watchType === 'Fixed' && (
+              <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-lg">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Başlangıç</FormLabel>
+                      <FormControl><Input type="time" {...field} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bitiş</FormLabel>
+                      <FormControl><Input type="time" {...field} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
 
             <FormField
               control={form.control}
@@ -297,7 +336,37 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
               )}
             />
 
-            <div className="bg-muted/50 p-4 rounded-lg space-y-4">
+            {watchType === 'Flexible' && watchDays.length > 0 && (
+              <div className="space-y-4">
+                <FormLabel>Gün Bazlı Saatler</FormLabel>
+                {watchDays.map(day => (
+                  <div key={day} className="flex items-center gap-2 bg-muted/20 p-2 rounded-md border border-dashed">
+                    <span className="text-sm font-bold w-12">{day}:</span>
+                    <FormField
+                      control={form.control}
+                      name={`daySpecificTimes.${day}.startTime`}
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormControl><Input type="time" {...field} className="h-8 text-xs" /></FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <span className="text-muted-foreground">-</span>
+                    <FormField
+                      control={form.control}
+                      name={`daySpecificTimes.${day}.endTime`}
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormControl><Input type="time" {...field} className="h-8 text-xs" /></FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="bg-primary/5 p-4 rounded-lg space-y-4 border border-primary/20">
               <div className="flex items-center gap-2">
                 <CalendarCheck className="h-4 w-4 text-primary" />
                 <span className="text-sm font-semibold">Takvime Toplu Ekle</span>
@@ -325,7 +394,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
             </div>
 
             <SheetFooter>
-              <Button type="submit" className="w-full">Düzeni Kaydet ve Uygula</Button>
+              <Button type="submit" className="w-full">Düzeni Kaydet</Button>
             </SheetFooter>
           </form>
         </Form>

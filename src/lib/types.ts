@@ -87,20 +87,21 @@ export type CalendarEvent = {
   color?: string; // Hex or tailwind class
 };
 
-export type WorkScheduleType = 'Fixed' | 'Shift' | 'Flexible';
+export type WorkScheduleType = 'Fixed' | 'Flexible';
 
 export type WorkRule = {
   id: string;
   userId: string;
   title: string;
   workScheduleType: WorkScheduleType;
-  defaultDailyStartTime: string; // "09:00"
-  defaultDailyEndTime: string;   // "18:00"
+  defaultDailyStartTime: string; // Used for "Fixed"
+  defaultDailyEndTime: string;   // Used for "Fixed"
   daysOfWeek: string[];          // ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+  daySpecificTimes?: Record<string, { startTime: string; endTime: string }>; // Used for "Flexible"
   customBreakDurationMinutes?: number;
   isActive: boolean;
-  color?: string; // Color for the shift
-  hourlyRate?: number; // Rate per hour for salary calculation
+  color?: string; 
+  hourlyRate?: number; 
 };
 
 export type WorkLog = {
@@ -115,8 +116,8 @@ export type WorkLog = {
   isBusy: boolean;
   workRuleId?: string;
   notes?: string;
-  color?: string; // Inherited from rule
-  earningsAtTime?: number; // Store how much was earned at that log
+  color?: string; 
+  earningsAtTime?: number; 
 };
 
 export type Birthday = {

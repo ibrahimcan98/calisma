@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -81,14 +80,12 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
         return bDate.getDate() === day.getDate() && bDate.getMonth() === day.getMonth();
     });
 
-    // date-fns getDay returns 0 for Sunday, 1 for Monday... 6 for Saturday
     const dayIndex = getDay(day);
-    // Map to TR_DAYS index (0: Pzt, 1: Sal... 6: Paz)
     const trDayIndex = dayIndex === 0 ? 6 : dayIndex - 1;
     const dayName = TR_DAYS[trDayIndex];
 
     const virtualShifts = workRules
-        .filter(r => r.isActive && r.daysOfWeek.some(d => d.replace('.', '').toLowerCase().startsWith(dayName.toLowerCase().slice(0, 2))))
+        .filter(r => r.isActive && r.daysOfWeek.includes(dayName))
         .filter(r => !dayLogs.some(l => isSameDay(l.date, day)));
 
     return {
@@ -122,7 +119,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
 
     toast({ 
         title: "Gün Temizlendi", 
-        description: `${dayEvents.length + dayLogs.length} adet etkinlik ve mesai kaydı silindi.` 
+        description: "Tüm etkinlik ve mesailer silindi." 
     });
   };
 
@@ -159,6 +156,10 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
             const isCurrentMonth = isSameMonth(day, monthStart);
             const hasContent = dayEvents.length > 0 || dayLogs.length > 0 || dayBirthdays.length > 0 || virtualShifts.length > 0;
 
+            const dayIndex = getDay(day);
+            const trDayIndex = dayIndex === 0 ? 6 : dayIndex - 1;
+            const dayName = TR_DAYS[trDayIndex];
+
             return (
               <Popover key={idx}>
                 <PopoverTrigger asChild>
@@ -167,8 +168,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                       "min-h-[140px] p-2 border-r border-b transition-colors cursor-pointer",
                       !isCurrentMonth && "bg-muted/10 text-muted-foreground/50",
                       isToday && "bg-primary/5",
-                      isWeekend(day) && isCurrentMonth && "bg-muted/5",
-                      hasContent && "hover:bg-accent/10"
+                      hasContent && "hover:bg-accent/5"
                     )}
                   >
                     <div className="flex justify-between items-center mb-1">
@@ -181,37 +181,39 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                     </div>
                     
                     <div className="space-y-1">
-                      {dayBirthdays.slice(0, 2).map(b => (
-                        <div key={b.id} className="text-[10px] bg-pink-100 text-pink-700 px-1 py-0.5 rounded flex items-center gap-1 border border-pink-200 truncate">
+                      {dayBirthdays.map(b => (
+                        <div key={b.id} className="text-[10px] bg-pink-100 text-pink-700 px-1 py-0.5 rounded border border-pink-200 truncate">
                             🎂 {b.personName}
                         </div>
                       ))}
                       
-                      {dayLogs.slice(0, 2).map(l => {
-                        const rule = workRules.find(r => r.id === l.workRuleId);
-                        const customColor = l.color || rule?.color || '#3b82f6';
+                      {dayLogs.map(l => (
+                        <div 
+                          key={l.id} 
+                          className="text-[10px] px-1 py-0.5 rounded border truncate"
+                          style={{ backgroundColor: `${l.color || '#3b82f6'}20`, borderColor: l.color || '#3b82f6', color: l.color || '#3b82f6', borderLeftWidth: '4px' }}
+                        >
+                            💼 {format(l.actualStartTime, 'HH:mm')}
+                        </div>
+                      ))}
+
+                      {virtualShifts.map(v => {
+                        let displayTime = `${v.defaultDailyStartTime}-${v.defaultDailyEndTime}`;
+                        if (v.workScheduleType === 'Flexible' && v.daySpecificTimes?.[dayName]) {
+                          displayTime = `${v.daySpecificTimes[dayName].startTime}-${v.daySpecificTimes[dayName].endTime}`;
+                        }
                         return (
                           <div 
-                            key={l.id} 
-                            className="text-[10px] px-1 py-0.5 rounded border truncate"
-                            style={{ backgroundColor: `${customColor}20`, borderColor: customColor, color: customColor, borderLeftWidth: '4px' }}
+                            key={v.id} 
+                            className="text-[10px] px-1 py-0.5 rounded border border-dashed opacity-70 truncate"
+                            style={v.color ? { borderColor: v.color, color: v.color } : { borderColor: '#94a3b8', color: '#64748b' }}
                           >
-                              💼 {format(l.actualStartTime, 'HH:mm')}-{format(l.actualEndTime, 'HH:mm')}
+                              🔄 {displayTime}
                           </div>
                         );
                       })}
 
-                      {virtualShifts.slice(0, 1).map(v => (
-                        <div 
-                          key={v.id} 
-                          className="text-[10px] px-1 py-0.5 rounded border border-dashed opacity-70 truncate"
-                          style={v.color ? { borderColor: v.color, color: v.color } : { borderColor: '#94a3b8', color: '#64748b' }}
-                        >
-                            🔄 {v.defaultDailyStartTime}-{v.defaultDailyEndTime}
-                        </div>
-                      ))}
-
-                      {dayEvents.slice(0, 2).map(e => (
+                      {dayEvents.map(e => (
                         <div 
                           key={e.id} 
                           className="text-[10px] px-1 py-0.5 rounded truncate border"
@@ -220,10 +222,6 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                             {e.title}
                         </div>
                       ))}
-
-                      {hasContent && (dayEvents.length + dayLogs.length + dayBirthdays.length + virtualShifts.length > 5) && (
-                        <p className="text-[9px] text-muted-foreground text-center">...</p>
-                      )}
                     </div>
                   </div>
                 </PopoverTrigger>
@@ -234,21 +232,21 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                         {(dayEvents.length > 0 || dayLogs.length > 0) && (
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10">
-                                        <Trash2 className="h-4 w-4 mr-2" /> Günü Temizle
+                                    <Button variant="ghost" size="sm" className="h-8 text-destructive">
+                                        <Trash2 className="h-4 w-4 mr-2" /> Temizle
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>Günü Temizle?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Bu güne ait tüm özel etkinlikler ve mesai kayıtları silinecektir. Doğum günleri bu işlemden etkilenmez. Emin misiniz?
+                                            Bu güne ait özel etkinlikler ve mesai kayıtları silinecektir.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Vazgeç</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleClearDay(day)} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
-                                            Günü Temizle
+                                        <AlertDialogAction onClick={() => handleClearDay(day)} className="bg-destructive text-destructive-foreground">
+                                            Temizle
                                         </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -261,7 +259,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                         <p className="text-[10px] uppercase font-bold text-pink-600 flex items-center gap-1"><Cake className="h-3 w-3"/> Doğum Günleri</p>
                         {dayBirthdays.map(b => (
                             <div key={b.id} className="flex items-center justify-between group py-1 border-b border-pink-50 last:border-0">
-                                <span className="text-sm">🎂 {b.personName} {b.notes && <span className="text-xs text-muted-foreground italic">- {b.notes}</span>}</span>
+                                <span className="text-sm">🎂 {b.personName}</span>
                                 <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteItem(b.id, 'birthdays')}>
                                     <Trash2 className="h-3 w-3 text-muted-foreground" />
                                 </Button>
@@ -272,7 +270,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
 
                     {dayLogs.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] uppercase font-bold text-blue-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Mesai Kayıtları</p>
+                        <p className="text-[10px] uppercase font-bold text-blue-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Mesai</p>
                         {dayLogs.map(l => (
                             <div key={l.id} className="flex items-center justify-between group py-1 border-b border-blue-50 last:border-0">
                                 <span className="text-sm">💼 {format(l.actualStartTime, 'HH:mm')} - {format(l.actualEndTime, 'HH:mm')}</span>
@@ -286,8 +284,14 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
 
                     {virtualShifts.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] uppercase font-bold text-orange-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Beklenen Vardiya</p>
-                        {virtualShifts.map(v => <div key={v.id} className="text-sm text-muted-foreground italic py-1 border-b border-orange-50 last:border-0">🔄 {v.defaultDailyStartTime} - {v.defaultDailyEndTime} ({v.title})</div>)}
+                        <p className="text-[10px] uppercase font-bold text-orange-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Planlanan</p>
+                        {virtualShifts.map(v => {
+                          let displayTime = `${v.defaultDailyStartTime}-${v.defaultDailyEndTime}`;
+                          if (v.workScheduleType === 'Flexible' && v.daySpecificTimes?.[dayName]) {
+                            displayTime = `${v.daySpecificTimes[dayName].startTime}-${v.daySpecificTimes[dayName].endTime}`;
+                          }
+                          return <div key={v.id} className="text-sm text-muted-foreground italic py-1 border-b border-orange-50 last:border-0">🔄 {displayTime} ({v.title})</div>;
+                        })}
                       </div>
                     )}
 
@@ -296,7 +300,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                         <p className="text-[10px] uppercase font-bold text-primary flex items-center gap-1"><CalendarIcon className="h-3 w-3"/> Etkinlikler</p>
                         {dayEvents.map(e => (
                              <div key={e.id} className="flex items-center justify-between group py-1 border-b border-blue-50 last:border-0">
-                                <span className="text-sm">📌 {e.title} ({format(e.startTime, 'HH:mm')}-{format(e.endTime, 'HH:mm')})</span>
+                                <span className="text-sm">📌 {e.title}</span>
                                 <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteItem(e.id, 'events')}>
                                     <Trash2 className="h-3 w-3 text-muted-foreground" />
                                 </Button>
@@ -304,7 +308,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                         ))}
                       </div>
                     )}
-                    {!hasContent && <p className="text-sm text-muted-foreground text-center py-4">Bu gün için herhangi bir kayıt bulunmuyor.</p>}
+                    {!hasContent && <p className="text-sm text-muted-foreground text-center py-4">Kayıt yok.</p>}
                   </div>
                 </PopoverContent>
               </Popover>
