@@ -11,7 +11,6 @@ import { deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/no
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { AddWorkRuleSheet } from './add-work-rule-sheet';
-import { cn } from '@/lib/utils';
 import { 
   startOfWeek, 
   endOfWeek, 
@@ -35,7 +34,7 @@ type WorkRulesManagerProps = {
 };
 
 export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
-  const { user } = user ? user : useUser();
+  const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAddRuleOpen, setIsAddRuleOpen] = useState(false);
@@ -134,7 +133,7 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Çalışma Düzenleri</h2>
-          <p className="text-sm text-muted-foreground">Sabit veya esnek çalışma rutinlerinizi (hafta sonları dahil) yönetin.</p>
+          <p className="text-sm text-muted-foreground">Sabit veya esnek çalışma rutinlerinizi yönetin.</p>
         </div>
         <Button onClick={() => setIsAddRuleOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> Düzen Ekle
@@ -143,7 +142,7 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {rules.map(rule => (
-          <Card key={rule.id} className="overflow-hidden border-t-4" style={{ borderTopColor: rule.color || '#a855f7' }}>
+          <Card key={rule.id} className="overflow-hidden border-t-4" style={{ borderTopColor: rule.color || '#3b82f6' }}>
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <div>

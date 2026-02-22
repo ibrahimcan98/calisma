@@ -18,7 +18,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
 import {
   Select,
@@ -180,7 +179,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       <SheetContent className="overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Çalışma Düzeni Ekle</SheetTitle>
-          <SheetDescription>Hafta sonları dahil mesai saatlerinizi ve düzeninizi belirleyin.</SheetDescription>
+          <SheetDescription>Mesai saatlerinizi ve düzeninizi belirleyin.</SheetDescription>
         </SheetHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-6">
@@ -209,8 +208,8 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Fixed">Sabit Mesai (Tüm günler aynı)</SelectItem>
-                      <SelectItem value="Flexible">Esnek Mesai (Gün bazlı farklı)</SelectItem>
+                      <SelectItem value="Fixed">Sabit Mesai</SelectItem>
+                      <SelectItem value="Flexible">Esnek Mesai</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormItem>
