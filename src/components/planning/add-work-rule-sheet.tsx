@@ -18,6 +18,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import {
   Select,
@@ -39,10 +40,10 @@ import { DollarSign } from 'lucide-react';
 const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
 const COLORS = [
-  { name: 'Mor (Tuba)', value: '#a855f7' },
-  { name: 'Kırmızı (İbrahim)', value: '#ef4444' },
   { name: 'Mavi', value: '#3b82f6' },
   { name: 'Yeşil', value: '#22c55e' },
+  { name: 'Mor', value: '#a855f7' },
+  { name: 'Kırmızı', value: '#ef4444' },
   { name: 'Turuncu', value: '#f97316' },
   { name: 'İndigo', value: '#6366f1' },
 ];
@@ -54,34 +55,25 @@ const formSchema = z.object({
   endTime: z.string().min(1),
   days: z.array(z.string()).min(1, { message: 'En az bir gün seçilmelidir.' }),
   breakMinutes: z.coerce.number().default(30),
-  color: z.string().default('#a855f7'),
+  color: z.string().default('#3b82f6'),
   hourlyRate: z.coerce.number().min(0).default(0),
 });
 
-type AddWorkRuleSheetProps = {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-};
-
-export function AddWorkRuleSheet({ isOpen, onOpenChange }: AddWorkRuleSheetProps) {
-  const { user } = userHooks();
+export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: (isOpen: boolean) => void }) {
+  const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-
-  function userHooks() {
-      return useUser();
-  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: 'Hafta İçi Mesai',
+      title: 'Yeni Çalışma Düzeni',
       type: 'Fixed',
       startTime: '09:00',
       endTime: '18:00',
       days: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum'],
       breakMinutes: 30,
-      color: user?.email === 'tubakodak8@gmail.com' ? '#a855f7' : '#ef4444',
+      color: '#3b82f6',
       hourlyRate: 15,
     },
   });

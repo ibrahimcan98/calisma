@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Cake, Trash2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Cake, Trash2 } from 'lucide-react';
 import { 
   format, 
   startOfMonth, 
@@ -117,12 +117,6 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
     });
   };
 
-  const getUserStyle = (userId: string) => {
-    const isTuba = userId === currentUser?.uid && currentUser?.email === 'tubakodak8@gmail.com';
-    if (isTuba) return "border-l-4 border-l-purple-500 bg-purple-50 text-purple-700";
-    return "border-l-4 border-l-red-500 bg-red-50 text-red-700";
-  };
-
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -186,12 +180,12 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                       
                       {dayLogs.slice(0, 2).map(l => {
                         const rule = workRules.find(r => r.id === l.workRuleId);
-                        const customColor = l.color || rule?.color;
+                        const customColor = l.color || rule?.color || '#3b82f6';
                         return (
                           <div 
                             key={l.id} 
-                            className={cn("text-[10px] px-1 py-0.5 rounded border truncate", !customColor && getUserStyle(l.userId))}
-                            style={customColor ? { backgroundColor: `${customColor}20`, borderColor: customColor, color: customColor } : {}}
+                            className="text-[10px] px-1 py-0.5 rounded border truncate"
+                            style={{ backgroundColor: `${customColor}20`, borderColor: customColor, color: customColor, borderLeftWidth: '4px' }}
                           >
                               💼 {format(l.actualStartTime, 'HH:mm')}-{format(l.actualEndTime, 'HH:mm')}
                           </div>
@@ -202,7 +196,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                         <div 
                           key={v.id} 
                           className="text-[10px] px-1 py-0.5 rounded border border-dashed opacity-70 truncate"
-                          style={v.color ? { borderColor: v.color, color: v.color } : {}}
+                          style={v.color ? { borderColor: v.color, color: v.color } : { borderColor: '#94a3b8', color: '#64748b' }}
                         >
                             🔄 {v.defaultDailyStartTime}-{v.defaultDailyEndTime}
                         </div>
@@ -212,7 +206,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                         <div 
                           key={e.id} 
                           className="text-[10px] px-1 py-0.5 rounded truncate border"
-                          style={e.color ? { backgroundColor: `${e.color}20`, borderColor: e.color, color: e.color } : {}}
+                          style={e.color ? { backgroundColor: `${e.color}20`, borderColor: e.color, color: e.color } : { backgroundColor: '#f1f5f9', borderColor: '#cbd5e1', color: '#475569' }}
                         >
                             {e.title}
                         </div>
@@ -308,13 +302,6 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
             );
           })}
         </div>
-
-        <div className="mt-6 flex flex-wrap gap-4 text-[10px] text-muted-foreground border-t pt-4">
-            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-purple-100 border-l-4 border-l-purple-500"></div> Tuba (Mor)</div>
-            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-red-100 border-l-4 border-l-red-500"></div> İbrahim (Kırmızı)</div>
-            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-pink-100 border border-pink-200"></div> Doğum Günü</div>
-            <div className="flex items-center gap-2"><div className="h-3 w-3 rounded border border-dashed border-muted-foreground opacity-50"></div> Beklenen Vardiya</div>
-        </div>
       </CardContent>
 
       <AddEventSheet 
@@ -324,4 +311,3 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
     </Card>
   );
 }
-

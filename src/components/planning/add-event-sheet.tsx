@@ -36,10 +36,10 @@ import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { cn } from '@/lib/utils';
 
 const COLORS = [
-  { name: 'Mor', value: '#a855f7' },
-  { name: 'Kırmızı', value: '#ef4444' },
   { name: 'Mavi', value: '#3b82f6' },
   { name: 'Yeşil', value: '#22c55e' },
+  { name: 'Mor', value: '#a855f7' },
+  { name: 'Kırmızı', value: '#ef4444' },
   { name: 'Turuncu', value: '#f97316' },
   { name: 'İndigo', value: '#6366f1' },
 ];
@@ -55,12 +55,7 @@ const formSchema = z.object({
   color: z.string().optional(),
 });
 
-type AddEventSheetProps = {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-};
-
-export function AddEventSheet({ isOpen, onOpenChange }: AddEventSheetProps) {
+export function AddEventSheet({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: (isOpen: boolean) => void }) {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -75,7 +70,7 @@ export function AddEventSheet({ isOpen, onOpenChange }: AddEventSheetProps) {
       endTime: '10:00',
       eventType: 'Private',
       isShared: true,
-      color: user?.email === 'tubakodak8@gmail.com' ? '#a855f7' : '#ef4444',
+      color: '#3b82f6',
     },
   });
 
