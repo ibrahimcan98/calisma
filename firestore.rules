@@ -3,75 +3,28 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * # FİNTRACK PERSONAL - GÜVENLİK KURALLARI (PROTOTİP MODU)
-     * 
-     * ## Temel Felsefe
-     * Bu kurallar kümesi, "Yetkilendirme Bağımsızlığı" ve "İzole Kullanıcı Verisi" prensiplerini temel alır.
-     * Uygulama, her kullanıcının verisinin diğerlerinden tamamen ayrıldığı bir mülkiyet modelini benimser.
-     * 
-     * ## Veri Yapısı
-     * Tüm veriler `/users/{userId}` kök yolu altında hiyerarşik olarak yapılandırılmıştır.
-     * - `/users/{userId}`: Kullanıcı profili ve ayarları.
-     * - `/users/{userId}/categories/{id}`: Kişisel finans kategorileri.
-     * - `/users/{userId}/transactions/{id}`: Gelir ve gider işlemleri.
-     * - `/users/{userId}/recurringTransactions/{id}`: Abonelikler ve düzenli işlemler.
-     * - `/users/{userId}/events/{id}`: Takvim etkinlikleri (İş/Özel).
-     * - `/users/{userId}/workRules/{id}`: Çalışma düzeni tanımları.
-     * - `/users/{userId}/workLogs/{id}`: Gerçekleşen çalışma saatleri.
-     * - `/users/{userId}/birthdays/{id}`: Doğum günü hatırlatıcıları.
-     * 
-     * ## Güvenlik Kararları
-     * 1. **Strict Ownership (Katı Mülkiyet):** Sadece `request.auth.uid` ile eşleşen `{userId}` yolundaki veriler okunabilir ve yazılabilir.
-     * 2. **Relational Integrity (İlişkisel Bütünlük):** Veri yazılırken, doküman içindeki `userId` veya `creatorUserId` alanının path (yol) parametresiyle eşleşmesi zorunludur.
-     * 3. **Prototipleme Esnekliği:** Veri tipleri (string, int vb.) veya şema detayları doğrulanmaz; yalnızca yetkilendirme ve kimlik doğrulama kontrol edilir.
-     * 4. **Paylaşımlı Görünüm Notu:** Mevcut yapıda izolasyon esastır. Eşler arası paylaşım için doküman düzeyinde 'isShared' alanı bulunsa da, bu prototip sürümünde tam erişim izolasyonu `/users/{userId}` üzerinden sağlanmaktadır.
+     * # FİNTRACK PERSONAL - GÜVENLİK KURALLARI
      */
 
-    // --- YARDIMCI FONKSİYONLAR ---
-
-    /**
-     * @description Kullanıcının sisteme giriş yapıp yapmadığını kontrol eder.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description İstenen kaynağın belirtilen kullanıcıya ait olup olmadığını kontrol eder.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * @description Güncelleme veya silme işlemlerinde, dokümanın mevcut olduğunu ve sahibinin kullanıcı olduğunu doğrular.
-     */
     function isExistingOwner(userId) {
       return resource != null && isOwner(userId);
     }
 
-    // --- KOLEKSİYON KURALLARI ---
-
-    /**
-     * @description Kullanıcı profil bilgilerini yönetir. Doküman ID'si kullanıcının UID'si olmalıdır.
-     * @path /users/{userId}
-     * @allow (get) Eğer auth.uid == 'user123' ise /users/user123 dokümanını okuyabilir.
-     * @deny (list) Tüm kullanıcıları listelemek yasaktır.
-     * @principle Path-based ownership.
-     */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
 
-      /**
-       * @description Kullanıcıya özel finans kategorileri.
-       * @path /users/{userId}/categories/{categoryId}
-       * @allow (create) request.resource.data.userId alanı userId parametresiyle eşleşmelidir.
-       * @deny (write) Başka bir kullanıcının alt koleksiyonuna yazma girişimi.
-       */
       match /categories/{categoryId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
@@ -79,12 +32,6 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Tek seferlik finansal işlemler (Gelir/Gider).
-       * @path /users/{userId}/transactions/{transactionId}
-       * @allow (list) Kullanıcı kendi işlem geçmişini listeleyebilir.
-       * @principle Denormalized ownership validation.
-       */
       match /transactions/{transactionId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
@@ -92,10 +39,6 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Abonelikler ve yinelenen ödemeler.
-       * @path /users/{userId}/recurringTransactions/{recurringId}
-       */
       match /recurringTransactions/{recurringId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
@@ -103,54 +46,67 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Takvim etkinlikleri (İş, Özel, Doğum Günü vb.).
-       * @path /users/{userId}/events/{eventId}
-       * @principle Prototipte 'creatorUserId' alanının path ile uyumu denetlenir.
-       */
+      match /goals/{goalId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      match /subscriptions/{subId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      match /students/{studentId} {
+        allow get, list: if true; // Public access for reports
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+
+        match /balanceLogs/{logId} {
+          allow get, list: if true;
+          allow create: if isOwner(userId);
+          allow delete: if isOwner(userId);
+        }
+      }
+
+      match /lessonLogs/{logId} {
+        allow get, list: if true;
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
+      }
+
+      // --- PLANLAMA MODÜLÜ KURALLARI ---
+
       match /events/{eventId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.creatorUserId == userId;
-        allow update: if isExistingOwner(userId) && request.resource.data.creatorUserId == resource.data.creatorUserId;
-        allow delete: if isExistingOwner(userId);
+        allow update, delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Çalışma düzeni ve tekrar kuralları.
-       * @path /users/{userId}/workRules/{ruleId}
-       */
       match /workRules/{ruleId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-        allow delete: if isExistingOwner(userId);
+        allow update, delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Gerçekleşen çalışma saatleri ve mola kayıtları.
-       * @path /users/{userId}/workLogs/{logId}
-       */
       match /workLogs/{logId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-        allow delete: if isExistingOwner(userId);
+        allow update, delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Doğum günü kayıtları.
-       * @path /users/{userId}/birthdays/{birthdayId}
-       */
       match /birthdays/{birthdayId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.creatorUserId == userId;
-        allow update: if isExistingOwner(userId) && request.resource.data.creatorUserId == resource.data.creatorUserId;
-        allow delete: if isExistingOwner(userId);
+        allow update, delete: if isExistingOwner(userId);
       }
     }
 
-    // --- GLOBAL DENY ---
-    // Diğer tüm yollar ve erişimler varsayılan olarak reddedilir.
     match /{document=**} {
       allow read, write: if false;
     }

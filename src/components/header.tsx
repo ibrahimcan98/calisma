@@ -1,6 +1,6 @@
-'use client'; // Make it a client component
+'use client';
 
-import { Wallet, User, LogOut, LayoutDashboard, BookOpen } from 'lucide-react';
+import { Wallet, User, LogOut, LayoutDashboard, BookOpen, Calendar } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useUser, useAuth } from '@/firebase';
 import Link from 'next/link';
@@ -51,6 +51,9 @@ export function Header() {
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                   <Link href="/lessons"><BookOpen className="mr-2 h-4 w-4" /> Ders Takibi</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                  <Link href="/planning"><Calendar className="mr-2 h-4 w-4" /> Çalışma & Planlama</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/profile"><User className="mr-2 h-4 w-4" /> Profil</Link>

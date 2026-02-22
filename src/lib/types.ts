@@ -68,3 +68,56 @@ export type BalanceLog = {
 };
 
 export type Period = 'weekly' | 'monthly';
+
+// --- PLANNING TYPES ---
+
+export type EventType = 'Work' | 'Private' | 'Shift' | 'Birthday';
+
+export type CalendarEvent = {
+  id: string;
+  creatorUserId: string;
+  title: string;
+  description?: string;
+  startTime: Date;
+  endTime: Date;
+  eventType: EventType;
+  isShared: boolean;
+  recurrenceRule?: string;
+};
+
+export type WorkScheduleType = 'Fixed' | 'Shift' | 'Flexible';
+
+export type WorkRule = {
+  id: string;
+  userId: string;
+  title: string;
+  workScheduleType: WorkScheduleType;
+  defaultDailyStartTime: string; // "09:00"
+  defaultDailyEndTime: string;   // "18:00"
+  daysOfWeek: string[];          // ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+  customBreakDurationMinutes?: number;
+  isActive: boolean;
+};
+
+export type WorkLog = {
+  id: string;
+  userId: string;
+  date: Date;
+  actualStartTime: Date;
+  actualEndTime: Date;
+  actualBreakDurationMinutes: number;
+  totalWorkDurationMinutes: number;
+  overtimeMinutes?: number;
+  isBusy: boolean;
+  workRuleId?: string;
+  notes?: string;
+};
+
+export type Birthday = {
+  id: string;
+  creatorUserId: string;
+  personName: string;
+  birthDate: Date;
+  notes?: string;
+  isShared: boolean;
+};
