@@ -15,7 +15,6 @@ import {
   isSameDay, 
   addMonths, 
   subMonths,
-  isWeekend,
   getDay
 } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -80,9 +79,8 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
         return bDate.getDate() === day.getDate() && bDate.getMonth() === day.getMonth();
     });
 
-    const dayIndex = getDay(day);
-    const trDayIndex = dayIndex === 0 ? 6 : dayIndex - 1;
-    const dayName = TR_DAYS[trDayIndex];
+    const rawDayName = format(day, 'eee', { locale: tr });
+    const dayName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1).replace('.', '');
 
     const virtualShifts = workRules
         .filter(r => r.isActive && r.daysOfWeek.includes(dayName))
@@ -156,9 +154,8 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
             const isCurrentMonth = isSameMonth(day, monthStart);
             const hasContent = dayEvents.length > 0 || dayLogs.length > 0 || dayBirthdays.length > 0 || virtualShifts.length > 0;
 
-            const dayIndex = getDay(day);
-            const trDayIndex = dayIndex === 0 ? 6 : dayIndex - 1;
-            const dayName = TR_DAYS[trDayIndex];
+            const rawDayName = format(day, 'eee', { locale: tr });
+            const dayName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1).replace('.', '');
 
             return (
               <Popover key={idx}>

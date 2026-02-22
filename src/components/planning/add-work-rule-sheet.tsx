@@ -78,7 +78,10 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       startTime: '09:00',
       endTime: '18:00',
       days: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum'],
-      daySpecificTimes: {},
+      daySpecificTimes: DAYS.reduce((acc, day) => {
+        acc[day] = { startTime: '09:00', endTime: '18:00' };
+        return acc;
+      }, {} as any),
       breakMinutes: 30,
       color: '#3b82f6',
       hourlyRate: 15,
@@ -107,6 +110,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       hourlyRate: values.hourlyRate,
     };
 
+    // Use await here because we need ruleId for applyTo logic
     const docRef = await addDoc(ruleRef, newRule);
     const ruleId = docRef.id;
 
@@ -127,7 +131,9 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       let count = 0;
 
       daysToApply.forEach(day => {
-        const dayName = format(day, 'eee', { locale: tr }).replace('.', '');
+        const rawDayName = format(day, 'eee', { locale: tr });
+        const dayName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1).replace('.', '');
+        
         if (values.days.includes(dayName)) {
           let sTime = values.startTime;
           let eTime = values.endTime;
@@ -346,7 +352,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                       name={`daySpecificTimes.${day}.startTime`}
                       render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormControl><Input type="time" {...field} value={field.value ?? ''} className="h-8 text-xs" /></FormControl>
+                          <FormControl><Input type="time" {...field} value={field.value ?? '09:00'} className="h-8 text-xs" /></FormControl>
                         </FormItem>
                       )}
                     />
@@ -356,7 +362,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                       name={`daySpecificTimes.${day}.endTime`}
                       render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormControl><Input type="time" {...field} value={field.value ?? ''} className="h-8 text-xs" /></FormControl>
+                          <FormControl><Input type="time" {...field} value={field.value ?? '18:00'} className="h-8 text-xs" /></FormControl>
                         </FormItem>
                       )}
                     />
