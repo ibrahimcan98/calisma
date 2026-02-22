@@ -32,6 +32,7 @@ type WorkRulesManagerProps = {
   logs: WorkLog[];
 };
 
+// Sunday: 0, Monday: 1, ..., Saturday: 6
 const DAY_NAME_MAP = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 
 export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
@@ -81,10 +82,11 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
     let count = 0;
 
     daysToApply.forEach(day => {
+      // getDay() returns 0 for Sunday, 6 for Saturday
       const dayName = DAY_NAME_MAP[getDay(day)];
       
       if (rule.daysOfWeek.includes(dayName)) {
-        // Çakışma kontrolü
+        // Çakışma kontrolü: Aynı kuraldan aynı gün için zaten bir log var mı?
         const alreadyExists = logs.some(l => isSameDay(l.date, day) && l.workRuleId === rule.id);
         
         if (!alreadyExists) {
@@ -92,8 +94,8 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
           let eTime = rule.defaultDailyEndTime;
 
           if (rule.workScheduleType === 'Flexible' && rule.daySpecificTimes?.[dayName]) {
-            sTime = rule.daySpecificTimes[dayName].startTime;
-            eTime = rule.daySpecificTimes[dayName].endTime;
+            sTime = rule.daySpecificTimes[dayName].startTime || rule.defaultDailyStartTime;
+            eTime = rule.daySpecificTimes[dayName].endTime || rule.defaultDailyEndTime;
           }
 
           const startTime = new Date(day);

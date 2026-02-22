@@ -83,6 +83,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
     // Hafta içi/sonu fark etmeksizin gün adını al
     const dayName = DAY_NAME_MAP[getDay(day)];
 
+    // Virtual shifts are ghost entries that show what's planned but not yet logged as a real work log
     const virtualShifts = workRules
         .filter(r => r.isActive && r.daysOfWeek.includes(dayName))
         .filter(r => !dayLogs.some(l => isSameDay(l.date, day)));
@@ -187,8 +188,8 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                       {dayLogs.map(l => (
                         <div 
                           key={l.id} 
-                          className="text-[10px] px-1 py-0.5 rounded border truncate"
-                          style={{ backgroundColor: `${l.color || '#3b82f6'}20`, borderColor: l.color || '#3b82f6', color: l.color || '#3b82f6', borderLeftWidth: '4px' }}
+                          className="text-[10px] px-1 py-0.5 rounded border truncate shadow-sm"
+                          style={{ backgroundColor: `${l.color || '#3b82f6'}30`, borderColor: l.color || '#3b82f6', color: l.color || '#3b82f6', borderLeftWidth: '4px' }}
                         >
                             💼 {format(l.actualStartTime, 'HH:mm')}
                         </div>
@@ -202,7 +203,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                         return (
                           <div 
                             key={v.id} 
-                            className="text-[10px] px-1 py-0.5 rounded border border-dashed opacity-70 truncate"
+                            className="text-[10px] px-1 py-0.5 rounded border border-dashed opacity-60 truncate bg-muted/5"
                             style={v.color ? { borderColor: v.color, color: v.color } : { borderColor: '#94a3b8', color: '#64748b' }}
                           >
                               🔄 {displayTime}
@@ -230,14 +231,14 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="sm" className="h-8 text-destructive">
-                                        <Trash2 className="h-4 w-4 mr-2" /> Temizle
+                                        <Trash2 className="h-4 w-4 mr-2" /> Günü Temizle
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>Günü Temizle?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Bu güne ait özel etkinlikler ve mesai kayıtları silinecektir.
+                                            Bu güne ait tüm özel etkinlikler ve mesai kayıtları (loglar) silinecektir. Planlanan (taslak) mesailer kural silinmedikçe görünmeye devam eder.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -267,10 +268,10 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
 
                     {dayLogs.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] uppercase font-bold text-blue-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Mesai</p>
+                        <p className="text-[10px] uppercase font-bold text-blue-600 flex items-center gap-1"><Clock className="h-3 w-3"/> İşlenen Mesai</p>
                         {dayLogs.map(l => (
                             <div key={l.id} className="flex items-center justify-between group py-1 border-b border-blue-50 last:border-0">
-                                <span className="text-sm">💼 {format(l.actualStartTime, 'HH:mm')} - {format(l.actualEndTime, 'HH:mm')}</span>
+                                <span className="text-sm font-medium">💼 {format(l.actualStartTime, 'HH:mm')} - {format(l.actualEndTime, 'HH:mm')}</span>
                                 <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteItem(l.id, 'workLogs')}>
                                     <Trash2 className="h-3 w-3 text-muted-foreground" />
                                 </Button>
@@ -281,7 +282,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
 
                     {virtualShifts.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] uppercase font-bold text-orange-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Planlanan</p>
+                        <p className="text-[10px] uppercase font-bold text-orange-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Planlanan (Taslak)</p>
                         {virtualShifts.map(v => {
                           let displayTime = `${v.defaultDailyStartTime}-${v.defaultDailyEndTime}`;
                           if (v.workScheduleType === 'Flexible' && v.daySpecificTimes?.[dayName]) {
@@ -289,6 +290,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                           }
                           return <div key={v.id} className="text-sm text-muted-foreground italic py-1 border-b border-orange-50 last:border-0">🔄 {displayTime} ({v.title})</div>;
                         })}
+                        <p className="text-[9px] text-muted-foreground mt-1">Bu taslağı kalıcı kayda dönüştürmek için Çalışma Takibi menüsünden 'Takvime İşle'yi kullanın.</p>
                       </div>
                     )}
 
