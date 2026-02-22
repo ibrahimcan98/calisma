@@ -287,7 +287,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Başlangıç</FormLabel>
-                      <FormControl><Input type="time" {...field} value={field.value ?? ''} /></FormControl>
+                      <FormControl><Input type="time" {...field} value={field.value ?? '09:00'} /></FormControl>
                     </FormItem>
                   )}
                 />
@@ -297,7 +297,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Bitiş</FormLabel>
-                      <FormControl><Input type="time" {...field} value={field.value ?? ''} /></FormControl>
+                      <FormControl><Input type="time" {...field} value={field.value ?? '18:00'} /></FormControl>
                     </FormItem>
                   )}
                 />

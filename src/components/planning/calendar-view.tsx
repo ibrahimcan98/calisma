@@ -14,8 +14,7 @@ import {
   isSameMonth, 
   isSameDay, 
   addMonths, 
-  subMonths,
-  getDay
+  subMonths
 } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -50,7 +49,6 @@ type CalendarViewProps = {
 };
 
 const TR_DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-const DAY_NAME_MAP = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 
 export function CalendarView({ events, workRules, workLogs, birthdays }: CalendarViewProps) {
   const { user: currentUser } = useUser();
@@ -80,19 +78,10 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
         return bDate.getDate() === day.getDate() && bDate.getMonth() === day.getMonth();
     });
 
-    // Hafta içi/sonu fark etmeksizin gün adını al
-    const dayName = DAY_NAME_MAP[getDay(day)];
-
-    // Virtual shifts are ghost entries that show what's planned but not yet logged as a real work log
-    const virtualShifts = workRules
-        .filter(r => r.isActive && r.daysOfWeek.includes(dayName))
-        .filter(r => !dayLogs.some(l => isSameDay(l.date, day)));
-
     return {
         events: dayEvents,
         logs: dayLogs,
-        birthdays: dayBirthdays,
-        virtualShifts
+        birthdays: dayBirthdays
     };
   };
 
@@ -151,12 +140,10 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
             </div>
           ))}
           {days.map((day, idx) => {
-            const { events: dayEvents, logs: dayLogs, birthdays: dayBirthdays, virtualShifts } = getEventsForDay(day);
+            const { events: dayEvents, logs: dayLogs, birthdays: dayBirthdays } = getEventsForDay(day);
             const isToday = isSameDay(day, new Date());
             const isCurrentMonth = isSameMonth(day, monthStart);
-            const hasContent = dayEvents.length > 0 || dayLogs.length > 0 || dayBirthdays.length > 0 || virtualShifts.length > 0;
-
-            const dayName = DAY_NAME_MAP[getDay(day)];
+            const hasContent = dayEvents.length > 0 || dayLogs.length > 0 || dayBirthdays.length > 0;
 
             return (
               <Popover key={idx}>
@@ -195,22 +182,6 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                         </div>
                       ))}
 
-                      {virtualShifts.map(v => {
-                        let displayTime = `${v.defaultDailyStartTime}-${v.defaultDailyEndTime}`;
-                        if (v.workScheduleType === 'Flexible' && v.daySpecificTimes?.[dayName]) {
-                          displayTime = `${v.daySpecificTimes[dayName].startTime}-${v.daySpecificTimes[dayName].endTime}`;
-                        }
-                        return (
-                          <div 
-                            key={v.id} 
-                            className="text-[10px] px-1 py-0.5 rounded border border-dashed opacity-60 truncate bg-muted/5"
-                            style={v.color ? { borderColor: v.color, color: v.color } : { borderColor: '#94a3b8', color: '#64748b' }}
-                          >
-                              🔄 {displayTime}
-                          </div>
-                        );
-                      })}
-
                       {dayEvents.map(e => (
                         <div 
                           key={e.id} 
@@ -238,7 +209,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>Günü Temizle?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Bu güne ait tüm özel etkinlikler ve mesai kayıtları (loglar) silinecektir. Planlanan (taslak) mesailer kural silinmedikçe görünmeye devam eder.
+                                            Bu güne ait tüm özel etkinlikler ve mesai kayıtları (loglar) silinecektir.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -277,20 +248,6 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
                                 </Button>
                             </div>
                         ))}
-                      </div>
-                    )}
-
-                    {virtualShifts.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-[10px] uppercase font-bold text-orange-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Planlanan (Taslak)</p>
-                        {virtualShifts.map(v => {
-                          let displayTime = `${v.defaultDailyStartTime}-${v.defaultDailyEndTime}`;
-                          if (v.workScheduleType === 'Flexible' && v.daySpecificTimes?.[dayName]) {
-                            displayTime = `${v.daySpecificTimes[dayName].startTime}-${v.daySpecificTimes[dayName].endTime}`;
-                          }
-                          return <div key={v.id} className="text-sm text-muted-foreground italic py-1 border-b border-orange-50 last:border-0">🔄 {displayTime} ({v.title})</div>;
-                        })}
-                        <p className="text-[9px] text-muted-foreground mt-1">Bu taslağı kalıcı kayda dönüştürmek için Çalışma Takibi menüsünden 'Takvime İşle'yi kullanın.</p>
                       </div>
                     )}
 

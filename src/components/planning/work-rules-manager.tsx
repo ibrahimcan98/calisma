@@ -82,11 +82,10 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
     let count = 0;
 
     daysToApply.forEach(day => {
-      // getDay() returns 0 for Sunday, 6 for Saturday
       const dayName = DAY_NAME_MAP[getDay(day)];
       
       if (rule.daysOfWeek.includes(dayName)) {
-        // Çakışma kontrolü: Aynı kuraldan aynı gün için zaten bir log var mı?
+        // Çakışma kontrolü
         const alreadyExists = logs.some(l => isSameDay(l.date, day) && l.workRuleId === rule.id);
         
         if (!alreadyExists) {
