@@ -312,7 +312,7 @@ export function LessonTracker() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalEarnings)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.totalEarnings)}</div>
             <p className="text-xs text-muted-foreground">Tüm zamanların toplam ders geliri</p>
           </CardContent>
         </Card>
@@ -349,8 +349,8 @@ export function LessonTracker() {
               {students.map(student => (
                 <AccordionItem value={student.id} key={student.id} className="border-none">
                   <div className="border rounded-md">
-                    <AccordionTrigger asChild>
-                      <div className="flex flex-1 items-center justify-between p-4 cursor-pointer font-medium transition-all hover:no-underline [&[data-state=open]]:border-b group">
+                    <AccordionTrigger asChild className="flex flex-1 items-center justify-between p-4 cursor-pointer font-medium transition-all hover:no-underline [&[data-state=open]]:border-b group">
+                      <div className="flex flex-1 items-center justify-between w-full">
                         <div className="flex-1 flex items-center gap-4 text-left">
                             <Users className="h-6 w-6 text-primary flex-shrink-0" />
                             <div>
@@ -469,8 +469,8 @@ export function LessonTracker() {
         <CardContent>
             {lessonLogs.length > 0 ? (
                 <Accordion type="single" collapsible className="w-full">
-                    {sortedWeeks.map(weekKey => {
-                        const weekData = logsByWeek[weekKey];
+                    {stats.sortedWeeks.map(weekKey => {
+                        const weekData = stats.logsByWeek[weekKey];
                         const weekEnd = endOfWeek(weekData.startDate, { weekStartsOn: 1 });
                         const weekLabel = `${format(weekData.startDate, 'd MMM', { locale: tr })} - ${format(weekEnd, 'd MMM yyyy', { locale: tr })}`;
                         
