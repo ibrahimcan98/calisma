@@ -17,10 +17,9 @@ import {
   startOfMonth, 
   endOfMonth, 
   eachDayOfInterval, 
-  format, 
-  isSameDay 
+  isSameDay,
+  getDay
 } from 'date-fns';
-import { tr } from 'date-fns/locale';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +32,8 @@ type WorkRulesManagerProps = {
   logs: WorkLog[];
 };
 
+const DAY_NAME_MAP = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+
 export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -42,11 +43,11 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
   const handleDeleteRule = (id: string) => {
     if (!user) return;
     
-    // Delete the rule itself
+    // Düzenin kendisini sil
     const ruleRef = doc(firestore, 'users', user.uid, 'workRules', id);
     deleteDocumentNonBlocking(ruleRef);
 
-    // Also find and delete all logs associated with this rule
+    // Bu düzene bağlı tüm logları da sil
     const logsToDelete = logs.filter(log => log.workRuleId === id);
     logsToDelete.forEach(log => {
       const logRef = doc(firestore, 'users', user.uid, 'workLogs', log.id);
@@ -80,19 +81,16 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
     let count = 0;
 
     daysToApply.forEach(day => {
-      // Normalize day name to match rule definition (e.g., 'Pzt', 'Sal', 'Cmt', 'Paz')
-      const rawDayName = format(day, 'eee', { locale: tr });
-      const dayName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1).replace('.', '');
+      const dayName = DAY_NAME_MAP[getDay(day)];
       
       if (rule.daysOfWeek.includes(dayName)) {
-        // Check if log already exists for this day and rule
+        // Çakışma kontrolü
         const alreadyExists = logs.some(l => isSameDay(l.date, day) && l.workRuleId === rule.id);
         
         if (!alreadyExists) {
           let sTime = rule.defaultDailyStartTime;
           let eTime = rule.defaultDailyEndTime;
 
-          // If flexible, check if specific time is defined for this day
           if (rule.workScheduleType === 'Flexible' && rule.daySpecificTimes?.[dayName]) {
             sTime = rule.daySpecificTimes[dayName].startTime;
             eTime = rule.daySpecificTimes[dayName].endTime;

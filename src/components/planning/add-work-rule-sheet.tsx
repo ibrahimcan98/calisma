@@ -35,10 +35,10 @@ import { collection, addDoc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { cn } from '@/lib/utils';
 import { DollarSign, CalendarCheck, Coffee, Clock } from 'lucide-react';
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, format } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 
 const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const DAY_NAME_MAP = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 
 const COLORS = [
   { name: 'Mavi', value: '#3b82f6' },
@@ -110,7 +110,6 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       hourlyRate: values.hourlyRate,
     };
 
-    // Use await here because we need ruleId for applyTo logic
     const docRef = await addDoc(ruleRef, newRule);
     const ruleId = docRef.id;
 
@@ -131,8 +130,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       let count = 0;
 
       daysToApply.forEach(day => {
-        const rawDayName = format(day, 'eee', { locale: tr });
-        const dayName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1).replace('.', '');
+        const dayName = DAY_NAME_MAP[getDay(day)];
         
         if (values.days.includes(dayName)) {
           let sTime = values.startTime;

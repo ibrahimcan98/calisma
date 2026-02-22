@@ -50,6 +50,7 @@ type CalendarViewProps = {
 };
 
 const TR_DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const DAY_NAME_MAP = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 
 export function CalendarView({ events, workRules, workLogs, birthdays }: CalendarViewProps) {
   const { user: currentUser } = useUser();
@@ -79,8 +80,8 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
         return bDate.getDate() === day.getDate() && bDate.getMonth() === day.getMonth();
     });
 
-    const rawDayName = format(day, 'eee', { locale: tr });
-    const dayName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1).replace('.', '');
+    // Hafta içi/sonu fark etmeksizin gün adını al
+    const dayName = DAY_NAME_MAP[getDay(day)];
 
     const virtualShifts = workRules
         .filter(r => r.isActive && r.daysOfWeek.includes(dayName))
@@ -154,8 +155,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
             const isCurrentMonth = isSameMonth(day, monthStart);
             const hasContent = dayEvents.length > 0 || dayLogs.length > 0 || dayBirthdays.length > 0 || virtualShifts.length > 0;
 
-            const rawDayName = format(day, 'eee', { locale: tr });
-            const dayName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1).replace('.', '');
+            const dayName = DAY_NAME_MAP[getDay(day)];
 
             return (
               <Popover key={idx}>
