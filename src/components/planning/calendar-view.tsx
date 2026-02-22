@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Cake } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Cake, Trash2, AlertCircle } from 'lucide-react';
 import { 
   format, 
   startOfMonth, 
@@ -21,13 +21,26 @@ import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent, WorkRule, WorkLog, Birthday } from '@/lib/types';
 import { AddEventSheet } from './add-event-sheet';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useToast } from '@/hooks/use-toast';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type CalendarViewProps = {
   events: CalendarEvent[];
@@ -38,6 +51,8 @@ type CalendarViewProps = {
 
 export function CalendarView({ events, workRules, workLogs, birthdays }: CalendarViewProps) {
   const { user: currentUser } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
 
@@ -75,6 +90,33 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
     };
   };
 
+  const handleDeleteItem = (id: string, type: 'events' | 'workLogs' | 'birthdays') => {
+    if (!currentUser) return;
+    const ref = doc(firestore, 'users', currentUser.uid, type, id);
+    deleteDocumentNonBlocking(ref);
+    toast({ title: "Silindi", description: "Kayıt başarıyla kaldırıldı." });
+  };
+
+  const handleClearDay = (day: Date) => {
+    if (!currentUser) return;
+    const { events: dayEvents, logs: dayLogs } = getEventsForDay(day);
+    
+    dayEvents.forEach(e => {
+        const ref = doc(firestore, 'users', currentUser.uid, 'events', e.id);
+        deleteDocumentNonBlocking(ref);
+    });
+
+    dayLogs.forEach(l => {
+        const ref = doc(firestore, 'users', currentUser.uid, 'workLogs', l.id);
+        deleteDocumentNonBlocking(ref);
+    });
+
+    toast({ 
+        title: "Gün Temizlendi", 
+        description: `${dayEvents.length + dayLogs.length} adet etkinlik ve mesai kaydı silindi.` 
+    });
+  };
+
   const getUserStyle = (userId: string) => {
     const isTuba = userId === currentUser?.uid && currentUser?.email === 'tubakodak8@gmail.com';
     if (isTuba) return "border-l-4 border-l-purple-500 bg-purple-50 text-purple-700";
@@ -102,128 +144,170 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
         </Button>
       </CardHeader>
       <CardContent>
-        <TooltipProvider>
-          <div className="grid grid-cols-7 border-t border-l">
-            {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
-              <div key={day} className="p-2 text-center text-sm font-semibold border-r border-b bg-muted/30">
-                {day}
-              </div>
-            ))}
-            {days.map((day, idx) => {
-              const { events, logs, birthdays, virtualShifts } = getEventsForDay(day);
-              const isToday = isSameDay(day, new Date());
-              const isCurrentMonth = isSameMonth(day, monthStart);
+        <div className="grid grid-cols-7 border-t border-l">
+          {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
+            <div key={day} className="p-2 text-center text-sm font-semibold border-r border-b bg-muted/30">
+              {day}
+            </div>
+          ))}
+          {days.map((day, idx) => {
+            const { events: dayEvents, logs: dayLogs, birthdays: dayBirthdays, virtualShifts } = getEventsForDay(day);
+            const isToday = isSameDay(day, new Date());
+            const isCurrentMonth = isSameMonth(day, monthStart);
+            const hasContent = dayEvents.length > 0 || dayLogs.length > 0 || dayBirthdays.length > 0 || virtualShifts.length > 0;
 
-              const hasContent = events.length > 0 || logs.length > 0 || birthdays.length > 0 || virtualShifts.length > 0;
-
-              return (
-                <Tooltip key={idx}>
-                  <TooltipTrigger asChild>
-                    <div
-                      className={cn(
-                        "min-h-[140px] p-2 border-r border-b transition-colors cursor-default",
-                        !isCurrentMonth && "bg-muted/10 text-muted-foreground/50",
-                        isToday && "bg-primary/5",
-                        isWeekend(day) && isCurrentMonth && "bg-muted/5",
-                        hasContent && "hover:bg-accent/50"
-                      )}
-                    >
-                      <div className="flex justify-between items-center mb-1">
-                        <span className={cn(
-                          "text-sm font-medium h-6 w-6 flex items-center justify-center rounded-full",
-                          isToday && "bg-primary text-primary-foreground"
-                        )}>
-                          {format(day, 'd')}
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        {birthdays.slice(0, 2).map(b => (
-                          <div key={b.id} className="text-[10px] bg-pink-100 text-pink-700 px-1 py-0.5 rounded flex items-center gap-1 border border-pink-200 truncate">
-                              🎂 {b.personName}
-                          </div>
-                        ))}
-                        
-                        {logs.slice(0, 2).map(l => {
-                          const rule = workRules.find(r => r.id === l.workRuleId);
-                          const customColor = l.color || rule?.color;
-                          return (
-                            <div 
-                              key={l.id} 
-                              className={cn("text-[10px] px-1 py-0.5 rounded border truncate", !customColor && getUserStyle(l.userId))}
-                              style={customColor ? { backgroundColor: `${customColor}20`, borderColor: customColor, color: customColor } : {}}
-                            >
-                                💼 {format(l.actualStartTime, 'HH:mm')}-{format(l.actualEndTime, 'HH:mm')}
-                            </div>
-                          );
-                        })}
-
-                        {virtualShifts.slice(0, 1).map(v => (
-                          <div 
-                            key={v.id} 
-                            className="text-[10px] px-1 py-0.5 rounded border border-dashed opacity-70 truncate"
-                            style={v.color ? { borderColor: v.color, color: v.color } : {}}
-                          >
-                              🔄 {v.defaultDailyStartTime}-{v.defaultDailyEndTime}
-                          </div>
-                        ))}
-
-                        {events.slice(0, 2).map(e => (
-                          <div 
-                            key={e.id} 
-                            className="text-[10px] px-1 py-0.5 rounded truncate border"
-                            style={e.color ? { backgroundColor: `${e.color}20`, borderColor: e.color, color: e.color } : {}}
-                          >
-                              {e.title}
-                          </div>
-                        ))}
-
-                        {hasContent && (events.length + logs.length + birthdays.length + virtualShifts.length > 5) && (
-                          <p className="text-[9px] text-muted-foreground text-center">...</p>
-                        )}
-                      </div>
+            return (
+              <Popover key={idx}>
+                <PopoverTrigger asChild>
+                  <div
+                    className={cn(
+                      "min-h-[140px] p-2 border-r border-b transition-colors cursor-pointer",
+                      !isCurrentMonth && "bg-muted/10 text-muted-foreground/50",
+                      isToday && "bg-primary/5",
+                      isWeekend(day) && isCurrentMonth && "bg-muted/5",
+                      hasContent && "hover:bg-accent/10"
+                    )}
+                  >
+                    <div className="flex justify-between items-center mb-1">
+                      <span className={cn(
+                        "text-sm font-medium h-6 w-6 flex items-center justify-center rounded-full",
+                        isToday && "bg-primary text-primary-foreground"
+                      )}>
+                        {format(day, 'd')}
+                      </span>
                     </div>
-                  </TooltipTrigger>
-                  {hasContent && (
-                    <TooltipContent side="right" className="w-64 p-3">
-                      <div className="space-y-3">
-                        <p className="font-bold border-b pb-1">{format(day, 'd MMMM yyyy, EEEE', { locale: tr })}</p>
-                        
-                        {birthdays.length > 0 && (
-                          <div className="space-y-1">
-                            <p className="text-[10px] uppercase font-semibold text-pink-600 flex items-center gap-1"><Cake className="h-3 w-3"/> Doğum Günleri</p>
-                            {birthdays.map(b => <div key={b.id} className="text-sm">🎂 {b.personName} {b.notes && <span className="text-xs text-muted-foreground italic">- {b.notes}</span>}</div>)}
+                    
+                    <div className="space-y-1">
+                      {dayBirthdays.slice(0, 2).map(b => (
+                        <div key={b.id} className="text-[10px] bg-pink-100 text-pink-700 px-1 py-0.5 rounded flex items-center gap-1 border border-pink-200 truncate">
+                            🎂 {b.personName}
+                        </div>
+                      ))}
+                      
+                      {dayLogs.slice(0, 2).map(l => {
+                        const rule = workRules.find(r => r.id === l.workRuleId);
+                        const customColor = l.color || rule?.color;
+                        return (
+                          <div 
+                            key={l.id} 
+                            className={cn("text-[10px] px-1 py-0.5 rounded border truncate", !customColor && getUserStyle(l.userId))}
+                            style={customColor ? { backgroundColor: `${customColor}20`, borderColor: customColor, color: customColor } : {}}
+                          >
+                              💼 {format(l.actualStartTime, 'HH:mm')}-{format(l.actualEndTime, 'HH:mm')}
                           </div>
-                        )}
+                        );
+                      })}
 
-                        {logs.length > 0 && (
-                          <div className="space-y-1">
-                            <p className="text-[10px] uppercase font-semibold text-blue-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Gerçekleşen Mesai</p>
-                            {logs.map(l => <div key={l.id} className="text-sm">💼 {format(l.actualStartTime, 'HH:mm')} - {format(l.actualEndTime, 'HH:mm')} {l.notes && <span className="text-xs text-muted-foreground italic">- {l.notes}</span>}</div>)}
-                          </div>
-                        )}
+                      {virtualShifts.slice(0, 1).map(v => (
+                        <div 
+                          key={v.id} 
+                          className="text-[10px] px-1 py-0.5 rounded border border-dashed opacity-70 truncate"
+                          style={v.color ? { borderColor: v.color, color: v.color } : {}}
+                        >
+                            🔄 {v.defaultDailyStartTime}-{v.defaultDailyEndTime}
+                        </div>
+                      ))}
 
-                        {virtualShifts.length > 0 && (
-                          <div className="space-y-1">
-                            <p className="text-[10px] uppercase font-semibold text-orange-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Beklenen Vardiya</p>
-                            {virtualShifts.map(v => <div key={v.id} className="text-sm">🔄 {v.defaultDailyStartTime} - {v.defaultDailyEndTime} ({v.title})</div>)}
-                          </div>
-                        )}
+                      {dayEvents.slice(0, 2).map(e => (
+                        <div 
+                          key={e.id} 
+                          className="text-[10px] px-1 py-0.5 rounded truncate border"
+                          style={e.color ? { backgroundColor: `${e.color}20`, borderColor: e.color, color: e.color } : {}}
+                        >
+                            {e.title}
+                        </div>
+                      ))}
 
-                        {events.length > 0 && (
-                          <div className="space-y-1">
-                            <p className="text-[10px] uppercase font-semibold text-primary flex items-center gap-1"><CalendarIcon className="h-3 w-3"/> Etkinlikler</p>
-                            {events.map(e => <div key={e.id} className="text-sm">📌 {e.title} ({format(e.startTime, 'HH:mm')}-{format(e.endTime, 'HH:mm')})</div>)}
-                          </div>
+                      {hasContent && (dayEvents.length + dayLogs.length + dayBirthdays.length + virtualShifts.length > 5) && (
+                        <p className="text-[9px] text-muted-foreground text-center">...</p>
+                      )}
+                    </div>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent side="right" className="w-80 p-4 shadow-xl">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-2">
+                        <p className="font-bold">{format(day, 'd MMMM yyyy, EEEE', { locale: tr })}</p>
+                        {(dayEvents.length > 0 || dayLogs.length > 0) && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                        <Trash2 className="h-4 w-4 mr-2" /> Günü Temizle
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Günü Temizle?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Bu güne ait tüm özel etkinlikler ve mesai kayıtları silinecektir. Doğum günleri bu işlemden etkilenmez. Emin misiniz?
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Vazgeç</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleClearDay(day)} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+                                            Günü Temizle
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         )}
+                    </div>
+                    
+                    {dayBirthdays.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-bold text-pink-600 flex items-center gap-1"><Cake className="h-3 w-3"/> Doğum Günleri</p>
+                        {dayBirthdays.map(b => (
+                            <div key={b.id} className="flex items-center justify-between group py-1 border-b border-pink-50 last:border-0">
+                                <span className="text-sm">🎂 {b.personName} {b.notes && <span className="text-xs text-muted-foreground italic">- {b.notes}</span>}</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteItem(b.id, 'birthdays')}>
+                                    <Trash2 className="h-3 w-3 text-muted-foreground" />
+                                </Button>
+                            </div>
+                        ))}
                       </div>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              );
-            })}
-          </div>
-        </TooltipProvider>
+                    )}
+
+                    {dayLogs.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-bold text-blue-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Mesai Kayıtları</p>
+                        {dayLogs.map(l => (
+                            <div key={l.id} className="flex items-center justify-between group py-1 border-b border-blue-50 last:border-0">
+                                <span className="text-sm">💼 {format(l.actualStartTime, 'HH:mm')} - {format(l.actualEndTime, 'HH:mm')}</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteItem(l.id, 'workLogs')}>
+                                    <Trash2 className="h-3 w-3 text-muted-foreground" />
+                                </Button>
+                            </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {virtualShifts.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-bold text-orange-600 flex items-center gap-1"><Clock className="h-3 w-3"/> Beklenen Vardiya</p>
+                        {virtualShifts.map(v => <div key={v.id} className="text-sm text-muted-foreground italic py-1 border-b border-orange-50 last:border-0">🔄 {v.defaultDailyStartTime} - {v.defaultDailyEndTime} ({v.title})</div>)}
+                      </div>
+                    )}
+
+                    {dayEvents.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-bold text-primary flex items-center gap-1"><CalendarIcon className="h-3 w-3"/> Etkinlikler</p>
+                        {dayEvents.map(e => (
+                             <div key={e.id} className="flex items-center justify-between group py-1 border-b border-blue-50 last:border-0">
+                                <span className="text-sm">📌 {e.title} ({format(e.startTime, 'HH:mm')}-{format(e.endTime, 'HH:mm')})</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteItem(e.id, 'events')}>
+                                    <Trash2 className="h-3 w-3 text-muted-foreground" />
+                                </Button>
+                            </div>
+                        ))}
+                      </div>
+                    )}
+                    {!hasContent && <p className="text-sm text-muted-foreground text-center py-4">Bu gün için herhangi bir kayıt bulunmuyor.</p>}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            );
+          })}
+        </div>
 
         <div className="mt-6 flex flex-wrap gap-4 text-[10px] text-muted-foreground border-t pt-4">
             <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-purple-100 border-l-4 border-l-purple-500"></div> Tuba (Mor)</div>
@@ -240,3 +324,4 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
     </Card>
   );
 }
+

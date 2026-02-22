@@ -156,8 +156,7 @@ export function Dashboard() {
         }
     }
 
-    // Add salary to income and last month calcs if appropriate
-    // For simplicity, we add all salary earned to totalIncome
+    // Toplam Gelir = İşlemlerden gelen gelir + Mesai kazançları
     const totalIncome = incomeFromTransactions + salaryStats.totalSalaryEarned;
 
     const oldestTransaction = transactions.length > 0 ? transactions.reduce((earliest, t) => earliest.date > t.date ? t : earliest) : {date: new Date()};
@@ -265,10 +264,10 @@ export function Dashboard() {
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card className="bg-green-50/50 border-green-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Toplam Gelir</CardTitle>
-              <ArrowUpCircle className="h-4 w-4 text-muted-foreground" />
+              <ArrowUpCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
@@ -295,22 +294,22 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-blue-50/50 border-blue-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Bakiye</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <DollarSign className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-bold text-blue-700">
                 {formatCurrency(stats.balance)}
               </div>
               <p className="text-xs text-muted-foreground">
-                Güncel net bakiye
+                Maaş dahil net bakiye
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-accent/40">
+          <Card className="border-accent/40 bg-accent/5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Cuma Ödemesi (Tahmini)</CardTitle>
               <TrendingUp className="h-4 w-4 text-accent" />
@@ -419,3 +418,4 @@ export function Dashboard() {
     </div>
   );
 }
+
