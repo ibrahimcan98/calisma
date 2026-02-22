@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Clock, PlayCircle, CalendarDays, CalendarRange, DollarSign } from 'lucide-react';
+import { Plus, Trash2, Clock, PlayCircle, CalendarDays, CalendarRange, DollarSign, Coffee } from 'lucide-react';
 import type { WorkRule, WorkLog } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
@@ -81,8 +81,8 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
           const [eh, em] = rule.defaultDailyEndTime.split(':').map(Number);
           endTime.setHours(eh, em, 0, 0);
 
-          const molaSuresi = rule.customBreakDurationMinutes || 30;
-          const totalMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60) - molaSuresi;
+          const molaSuresi = rule.customBreakDurationMinutes || 0;
+          const totalMinutes = Math.max(0, (endTime.getTime() - startTime.getTime()) / (1000 * 60) - molaSuresi);
 
           addDocumentNonBlocking(logsRef, {
             userId: user.uid,
@@ -93,7 +93,7 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
             totalWorkDurationMinutes: totalMinutes,
             isBusy: true,
             workRuleId: rule.id,
-            notes: `${rule.title} kapsamında ${period === 'today' ? 'bugün' : 'toplu'} oluşturuldu.`,
+            notes: `${rule.title} kapsamında ${period === 'today' ? 'bugün' : 'toplu'} oluşturuldu. Mola: ${molaSuresi} dk.`,
             color: rule.color,
           });
           count++;
@@ -126,11 +126,14 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Çalışma Düzenleri</h2>
-          <p className="text-sm text-muted-foreground">Sabit veya esnek çalışma rutinlerinizi ve saatlik ücretlerinizi tanımlayın.</p>
+          <p className="text-sm text-muted-foreground">Sabit veya esnek çalışma rutinlerinizi, mola sürelerini ve saatlik ücretlerinizi tanımlayın.</p>
         </div>
-        <Button onClick={() => setIsAddRuleOpen(true)}>
+        <button 
+          onClick={() => setIsAddRuleOpen(true)}
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground h-10 px-4 py-2 hover:bg-primary/90"
+        >
           <Plus className="mr-2 h-4 w-4" /> Düzen Ekle
-        </Button>
+        </button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -150,10 +153,14 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">{rule.defaultDailyStartTime} - {rule.defaultDailyEndTime}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-blue-600">
+                  <Coffee className="h-4 w-4" />
+                  <span>Mola: {rule.customBreakDurationMinutes || 0} dk.</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-green-600">
                   <DollarSign className="h-4 w-4" />

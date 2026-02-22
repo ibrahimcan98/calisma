@@ -35,7 +35,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { cn } from '@/lib/utils';
-import { DollarSign, CalendarCheck } from 'lucide-react';
+import { DollarSign, CalendarCheck, Coffee } from 'lucide-react';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
@@ -56,7 +56,7 @@ const formSchema = z.object({
   startTime: z.string().min(1),
   endTime: z.string().min(1),
   days: z.array(z.string()).min(1, { message: 'En az bir gün seçilmelidir.' }),
-  breakMinutes: z.coerce.number().default(30),
+  breakMinutes: z.coerce.number().min(0).default(30),
   color: z.string().default('#3b82f6'),
   hourlyRate: z.coerce.number().min(0).default(0),
   applyTo: z.enum(['none', 'this-week', 'this-month']).default('none'),
@@ -99,11 +99,9 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       hourlyRate: values.hourlyRate,
     };
 
-    // Rule'u kaydet
     const docRef = await addDoc(ruleRef, newRule);
     const ruleId = docRef.id;
 
-    // Eğer toplu ekleme seçildiyse
     if (values.applyTo !== 'none') {
       const logsRef = collection(firestore, 'users', user.uid, 'workLogs');
       const now = new Date();
@@ -131,8 +129,8 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
           const [eh, em] = values.endTime.split(':').map(Number);
           endTime.setHours(eh, em, 0, 0);
 
-          const molaSuresi = values.breakMinutes || 30;
-          const totalMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60) - molaSuresi;
+          const molaSuresi = values.breakMinutes || 0;
+          const totalMinutes = Math.max(0, (endTime.getTime() - startTime.getTime()) / (1000 * 60) - molaSuresi);
 
           addDocumentNonBlocking(logsRef, {
             userId: user.uid,
@@ -143,7 +141,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
             totalWorkDurationMinutes: totalMinutes,
             isBusy: true,
             workRuleId: ruleId,
-            notes: `${values.title} kapsamında toplu oluşturuldu.`,
+            notes: `${values.title} kapsamında toplu oluşturuldu. Mola: ${molaSuresi} dk.`,
             color: values.color,
           });
           count++;
@@ -165,7 +163,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
       <SheetContent className="overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Çalışma Düzeni Ekle</SheetTitle>
-          <SheetDescription>Tekrarlayan mesai saatlerinizi ve kazancınızı belirleyin.</SheetDescription>
+          <SheetDescription>Tekrarlayan mesai saatlerinizi, mola sürenizi ve kazancınızı belirleyin.</SheetDescription>
         </SheetHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-6">
@@ -181,29 +179,48 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="hourlyRate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Saatlik Ücret (€)</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input type="number" step="0.5" className="pl-10" {...field} />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="hourlyRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Saatlik Ücret (€)</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input type="number" step="0.5" className="pl-10" {...field} />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="breakMinutes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mola (Dakika)</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Coffee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input type="number" className="pl-10" {...field} />
+                      </div>
+                    </FormControl>
+                    <FormDescription className="text-[10px]">Maşa dahil edilmez.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
               name="color"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Renk Seçimi</FormLabel>
+                  <FormLabel>Takvim Rengi</FormLabel>
                   <div className="flex flex-wrap gap-2">
                     {COLORS.map((color) => (
                       <button
@@ -302,9 +319,6 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                         <SelectItem value="this-month">Bu Aya İşle</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormDescription className="text-[10px]">
-                      Kural kaydedildikten sonra seçilen döneme otomatik mesai kayıtları eklenir.
-                    </FormDescription>
                   </FormItem>
                 )}
               />
