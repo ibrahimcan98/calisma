@@ -283,7 +283,7 @@ export function LessonTracker() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(weeklyEarnings)}</div>
+            <div className="text-2xl font-bold">{isMounted ? formatCurrency(weeklyEarnings) : '...'}</div>
             <p className="text-xs text-muted-foreground">Bu hafta tamamlanan derslerin toplamı</p>
           </CardContent>
            <CardFooter>
@@ -312,7 +312,7 @@ export function LessonTracker() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalEarnings)}</div>
+            <div className="text-2xl font-bold">{isMounted ? formatCurrency(stats.totalEarnings) : '...'}</div>
             <p className="text-xs text-muted-foreground">Tüm zamanların toplam ders geliri</p>
           </CardContent>
         </Card>
@@ -349,8 +349,8 @@ export function LessonTracker() {
               {students.map(student => (
                 <AccordionItem value={student.id} key={student.id} className="border-none">
                   <div className="border rounded-md">
-                    <AccordionTrigger asChild className="flex flex-1 items-center justify-between p-4 cursor-pointer font-medium transition-all hover:no-underline [&[data-state=open]]:border-b group">
-                      <div className="flex flex-1 items-center justify-between w-full">
+                    <AccordionTrigger asChild>
+                      <div className="flex flex-1 items-center justify-between p-4 cursor-pointer font-medium transition-all hover:no-underline [&[data-state=open]]:border-b group">
                         <div className="flex-1 flex items-center gap-4 text-left">
                             <Users className="h-6 w-6 text-primary flex-shrink-0" />
                             <div>
@@ -377,7 +377,7 @@ export function LessonTracker() {
                                 {getRemainingLessonsText(student)}
                             </p>
                         </div>
-                        <div className="hidden lg:flex flex-1 flex-row gap-2 items-center">
+                        <div className="hidden lg:flex flex-1 flex-row gap-2 items-center" onClick={(e) => e.stopPropagation()}>
                             <Button
                               variant="outline"
                               className="w-full sm:w-auto"
@@ -399,7 +399,10 @@ export function LessonTracker() {
                                 />
                                 <Button
                                     className="w-full sm:w-auto"
-                                    onClick={() => handleAddFunds(student)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddFunds(student);
+                                    }}
                                 >
                                   Ders Ekle
                                 </Button>
@@ -408,11 +411,11 @@ export function LessonTracker() {
                         <div className="flex-none ml-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                 <Button variant="ghost" size="icon">
+                                 <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
                                     <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                                  </Button>
                               </AlertDialogTrigger>
-                              <AlertDialogContent>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
                                   <AlertDialogDescription>
@@ -420,8 +423,11 @@ export function LessonTracker() {
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>İptal</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteStudent(student.id)} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
+                                  <AlertDialogCancel onClick={(e) => e.stopPropagation()}>İptal</AlertDialogCancel>
+                                  <AlertDialogAction onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteStudent(student.id);
+                                  }} className="bg-destructive hover:bg-destructive/90">Sil</AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
