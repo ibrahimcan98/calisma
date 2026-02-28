@@ -17,7 +17,6 @@ import {
   Plus,
   Sparkles,
   CalendarDays,
-  History,
   PiggyBank,
   TrendingUp,
   Search,
@@ -31,7 +30,7 @@ import { ExpenditureAnalysisDialog } from './expenditure-analysis-dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { startOfMonth, subMonths, differenceInCalendarMonths, isSameWeek, isBefore, isSameDay, format, isToday, isYesterday, startOfToday } from 'date-fns';
+import { startOfMonth, subMonths, isSameWeek, isBefore, isSameDay, format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { SavingsGoals } from './savings-goals';
 import { SubscriptionsPanel } from './subscriptions-panel';
@@ -48,6 +47,8 @@ import {
   CartesianGrid,
   AreaChart,
   Area,
+  BarChart,
+  Bar,
 } from 'recharts';
 import {
   Select,
@@ -69,6 +70,7 @@ export function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('all');
+  const [chartType, setChartType] = useState('line');
 
   useEffect(() => {
     setIsMounted(true);
@@ -151,7 +153,7 @@ export function Dashboard() {
       const weekStart = new Date(weekKey);
       const friday = new Date(weekStart);
       friday.setDate(weekStart.getDate() + 4);
-      if (isBefore(friday, now) || isSameDay(friday, now)) {
+      if (friday <= now) {
         virtuals.push({
           id: `salary-${weekKey}`,
           userId: user.uid,
@@ -167,7 +169,7 @@ export function Dashboard() {
     subscriptions.forEach(sub => {
       let paymentDate = new Date(sub.startDate);
       let safetyCounter = 0;
-      while ((isBefore(paymentDate, now) || isSameDay(paymentDate, now)) && safetyCounter < 24) {
+      while (paymentDate <= now && safetyCounter < 24) {
         virtuals.push({
           id: `sub-${sub.id}-${paymentDate.toISOString()}`,
           userId: user.uid,
@@ -380,7 +382,7 @@ export function Dashboard() {
               <h2 className="text-xl font-bold text-slate-900">Gelir & Gider Analizi</h2>
               <p className="text-sm text-slate-400">Son 6 aylık finansal performansınız</p>
             </div>
-            <Tabs defaultValue="line" className="w-auto">
+            <Tabs value={chartType} onValueChange={setChartType} className="w-auto">
               <TabsList className="bg-slate-100 rounded-xl p-1">
                 <TabsTrigger value="line" className="rounded-lg text-xs">Çizgi</TabsTrigger>
                 <TabsTrigger value="bar" className="rounded-lg text-xs">Sütun</TabsTrigger>
@@ -389,17 +391,31 @@ export function Dashboard() {
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `${val}€`} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                  formatter={(val: number) => [formatCurrency(val), ""]}
-                />
-                <Line type="monotone" dataKey="gelir" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="gider" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} activeDot={{ r: 6 }} />
-              </LineChart>
+              {chartType === 'line' ? (
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `${val}€`} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    formatter={(val: number) => [formatCurrency(val), ""]}
+                  />
+                  <Line type="monotone" dataKey="gelir" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="gider" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} activeDot={{ r: 6 }} />
+                </LineChart>
+              ) : (
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `${val}€`} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    formatter={(val: number) => [formatCurrency(val), ""]}
+                  />
+                  <Bar dataKey="gelir" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="gider" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              )}
             </ResponsiveContainer>
           </div>
         </Card>
