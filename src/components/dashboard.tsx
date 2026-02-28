@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { categories as initialCategories } from '@/lib/data';
-import type { Transaction, Category, WorkRule, WorkLog } from '@/lib/types';
+import type { Transaction, Category, WorkRule, WorkLog, Subscription } from '@/lib/types';
 import { Header } from '@/components/header';
 import {
   Card,
@@ -33,7 +33,7 @@ import { ExpenditureAnalysisDialog } from './expenditure-analysis-dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { startOfMonth, subMonths, differenceInCalendarMonths, isSameWeek, startOfWeek, endOfWeek } from 'date-fns';
+import { startOfMonth, subMonths, differenceInCalendarMonths, isSameWeek, startOfWeek, endOfWeek, addDays, addMonths, addYears, isAfter, isBefore, isSameDay } from 'date-fns';
 import { SavingsGoals } from './savings-goals';
 import { SubscriptionsPanel } from './subscriptions-panel';
 import { useToast } from '@/hooks/use-toast';
@@ -76,6 +76,13 @@ export function Dashboard() {
   }, [firestore, user]);
   const { data: rawWorkLogs } = useCollection<Omit<WorkLog, 'id'>>(workLogsCollectionRef);
 
+  // Subscriptions
+  const subscriptionsCollectionRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, 'users', user.uid, 'subscriptions');
+  }, [firestore, user]);
+  const { data: rawSubscriptions } = useCollection<Omit<Subscription, 'id'>>(subscriptionsCollectionRef);
+
   const transactions = useMemo(() => {
     if (!rawTransactions) return [];
     return rawTransactions.map(t => ({
@@ -92,31 +99,79 @@ export function Dashboard() {
     }));
   }, [rawWorkLogs]);
 
-  // Calculate earnings from work logs
-  const salaryStats = useMemo(() => {
-    if (!isMounted || !workRules || workLogs.length === 0) {
-      return { totalSalaryEarned: 0, thisWeekSalary: 0 };
-    }
+  const subscriptions = useMemo(() => {
+    if (!rawSubscriptions) return [];
+    return rawSubscriptions.map(s => ({
+      ...s,
+      startDate: (s.startDate as any).toDate ? (s.startDate as any).toDate() : new Date(s.startDate),
+    }));
+  }, [rawSubscriptions]);
 
+  // Generate virtual transactions for Friday Salaries and Subscription Payments
+  const virtualTransactions = useMemo(() => {
+    if (!isMounted || !user) return [];
+    const virtuals: Transaction[] = [];
     const now = new Date();
-    let totalSalaryEarned = 0;
-    let thisWeekSalary = 0;
 
-    for (const log of workLogs) {
-      const rule = workRules.find(r => r.id === log.workRuleId);
+    // 1. Weekly Friday Salary
+    // Group earnings by week (Monday to Sunday)
+    const weeklyEarnings: Record<string, number> = {};
+    workLogs.forEach(log => {
+      const rule = workRules?.find(r => r.id === log.workRuleId);
       if (rule && rule.hourlyRate) {
-        // Duration is in minutes, convert to hours. Mola already deducted in totalWorkDurationMinutes.
         const earnings = (log.totalWorkDurationMinutes / 60) * rule.hourlyRate;
-        totalSalaryEarned += earnings;
-
-        if (isSameWeek(log.date, now, { weekStartsOn: 1 })) {
-          thisWeekSalary += earnings;
-        }
+        const weekStart = startOfWeek(log.date, { weekStartsOn: 1 });
+        const weekKey = weekStart.toISOString();
+        weeklyEarnings[weekKey] = (weeklyEarnings[weekKey] || 0) + earnings;
       }
-    }
+    });
 
-    return { totalSalaryEarned, thisWeekSalary };
-  }, [workLogs, workRules, isMounted]);
+    Object.entries(weeklyEarnings).forEach(([weekKey, amount]) => {
+      const weekStart = new Date(weekKey);
+      const friday = addDays(weekStart, 4); // Friday of that week
+      
+      // Only show salary if it's already occurred
+      if (isBefore(friday, now) || isSameDay(friday, now)) {
+        virtuals.push({
+          id: `salary-${weekKey}`,
+          userId: user.uid,
+          amount,
+          type: 'Income',
+          category: 'salary',
+          description: 'Haftalık Maaş Ödemesi',
+          date: friday,
+        });
+      }
+    });
+
+    // 2. Subscription Payments
+    subscriptions.forEach(sub => {
+      let paymentDate = new Date(sub.startDate);
+      // Ensure we don't calculate thousands of years if date is wrong
+      let safetyCounter = 0;
+      
+      while ((isBefore(paymentDate, now) || isSameDay(paymentDate, now)) && safetyCounter < 100) {
+        virtuals.push({
+          id: `sub-${sub.id}-${paymentDate.toISOString()}`,
+          userId: user.uid,
+          amount: sub.amount,
+          type: 'Expense',
+          category: sub.category || 'entertainment',
+          description: `${sub.name} Abonelik Ödemesi`,
+          date: new Date(paymentDate),
+        });
+
+        if (sub.frequency === 'monthly') {
+          paymentDate = addMonths(paymentDate, 1);
+        } else {
+          paymentDate = addYears(paymentDate, 1);
+        }
+        safetyCounter++;
+      }
+    });
+
+    return virtuals;
+  }, [workLogs, workRules, subscriptions, isMounted, user]);
 
   // Combined financial stats
   const stats = useMemo(() => {
@@ -136,15 +191,18 @@ export function Dashboard() {
     const startOfCurrentMonth = startOfMonth(now);
     const startOfLastMonth = startOfMonth(subMonths(now, 1));
     
-    let incomeFromTransactions = 0;
+    // Merge real and virtual transactions for calculation
+    const allItems = [...transactions, ...virtualTransactions];
+    
+    let totalIncome = 0;
     let totalExpenses = 0;
     let currentMonthExpenses = 0;
     let lastMonthExpenses = 0;
     let lastMonthIncome = 0;
 
-    for (const t of transactions) {
+    for (const t of allItems) {
         if (t.type === 'Income') {
-            incomeFromTransactions += t.amount;
+            totalIncome += t.amount;
             if (t.date >= startOfLastMonth && t.date < startOfCurrentMonth) {
                 lastMonthIncome += t.amount;
             }
@@ -158,8 +216,7 @@ export function Dashboard() {
         }
     }
 
-    const totalIncome = incomeFromTransactions + salaryStats.totalSalaryEarned;
-    const oldestTransaction = transactions.length > 0 ? transactions.reduce((earliest, t) => earliest.date > t.date ? t : earliest) : {date: new Date()};
+    const oldestTransaction = allItems.length > 0 ? allItems.reduce((earliest, t) => earliest.date > t.date ? t : earliest) : {date: new Date()};
     const totalMonths = Math.max(1, differenceInCalendarMonths(now, oldestTransaction.date) + 1);
     const averageMonthlyExpense = totalExpenses / totalMonths;
     const lastMonthSavings = lastMonthIncome - lastMonthExpenses;
@@ -173,11 +230,11 @@ export function Dashboard() {
       averageMonthlyExpense,
       lastMonthSavings,
     };
-  }, [transactions, salaryStats, isMounted]);
+  }, [transactions, virtualTransactions, isMounted]);
   
-  const sortedTransactions = useMemo(() => {
-    return [...transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
-  }, [transactions]);
+  const allTransactionsCombined = useMemo(() => {
+    return [...transactions, ...virtualTransactions].sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [transactions, virtualTransactions]);
 
   useEffect(() => {
     if (isMounted) {
@@ -198,7 +255,6 @@ export function Dashboard() {
   const handleAddTransaction = (transaction: Omit<Transaction, 'id' | 'userId'>) => {
     if (!transactionsCollectionRef || !user) return;
     
-    // CRITICAL: Always explicitly include userId for security rules
     const finalData = {
       type: transaction.type,
       amount: transaction.amount,
@@ -213,6 +269,13 @@ export function Dashboard() {
   };
 
   const handleDeleteTransaction = (id: string) => {
+    if (id.startsWith('salary-') || id.startsWith('sub-')) {
+        toast({
+            title: "Otomatik İşlem",
+            description: "Bu işlem mesai kayıtları veya aboneliklerden otomatik üretilmiştir. Silmek için ilgili kaydı düzenleyin.",
+        });
+        return;
+    }
     if (!user || !firestore) return;
     const transactionRef = doc(firestore, 'users', user.uid, 'transactions', id);
     deleteDocumentNonBlocking(transactionRef);
@@ -293,22 +356,22 @@ export function Dashboard() {
 
           <Card className="bg-primary/5 border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Maaş Kazancı</CardTitle>
-              <Briefcase className="h-4 w-4 text-primary" />
+              <CardTitle className="text-sm font-medium">Toplam Gider</CardTitle>
+              <ArrowDownCircle className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">
-                {formatCurrency(salaryStats.totalSalaryEarned)}
+              <div className="text-2xl font-bold text-red-600">
+                {formatCurrency(stats.totalExpenses)}
               </div>
               <p className="text-xs text-muted-foreground">
-                Tüm mesailerden hesaplanan
+                Abonelikler dahil toplam harcama
               </p>
             </CardContent>
           </Card>
 
           <Card className="bg-blue-50/50 border-blue-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Bakiye</CardTitle>
+              <CardTitle className="text-sm font-medium">Net Bakiye</CardTitle>
               <DollarSign className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
@@ -316,22 +379,22 @@ export function Dashboard() {
                 {formatCurrency(stats.balance)}
               </div>
               <p className="text-xs text-muted-foreground">
-                Maaş dahil net bakiye
+                Tüm gelir/gider sonrası kalan
               </p>
             </CardContent>
           </Card>
 
           <Card className="border-accent/40 bg-accent/5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Cuma Ödemesi (Tahmini)</CardTitle>
+              <CardTitle className="text-sm font-medium">Haftalık Beklenen Maaş</CardTitle>
               <TrendingUp className="h-4 w-4 text-accent" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-accent">
-                {formatCurrency(salaryStats.thisWeekSalary)}
+                {formatCurrency(allTransactionsCombined.find(t => t.category === 'salary' && isSameWeek(t.date, new Date(), { weekStartsOn: 1 }))?.amount || 0)}
               </div>
               <p className="text-xs text-muted-foreground">
-                Bu hafta Cuma beklenen maaş
+                Bu Cuma yatması beklenen tutar
               </p>
             </CardContent>
           </Card>
@@ -406,7 +469,7 @@ export function Dashboard() {
         </div>
 
         <TransactionsTable
-          transactions={sortedTransactions}
+          transactions={allTransactionsCombined}
           categories={categories}
           onDeleteTransaction={handleDeleteTransaction}
           formatCurrency={formatCurrency}
@@ -423,7 +486,7 @@ export function Dashboard() {
       <ExpenditureAnalysisDialog
         isOpen={isAnalysisDialogOpen}
         onOpenChange={setAnalysisDialogOpen}
-        transactions={sortedTransactions}
+        transactions={allTransactionsCombined}
         categories={categories}
         formatCurrency={formatCurrency}
       />
