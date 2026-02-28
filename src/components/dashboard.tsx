@@ -68,6 +68,7 @@ export function Dashboard() {
   const [isMounted, setIsMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
     setIsMounted(true);
@@ -131,18 +132,6 @@ export function Dashboard() {
     const virtuals: Transaction[] = [];
     const now = new Date();
 
-    const weeklyEarnings: Record<string, number> = {};
-    workLogs.forEach(log => {
-      const rule = workRules?.find(r => r.id === log.workRuleId);
-      if (rule && rule.hourlyRate) {
-        const earnings = (log.totalWorkDurationMinutes / 60) * rule.hourlyRate;
-        const weekStart = startOfMonth(log.date); // Use month as key for grouping
-        const weekKey = weekStart.toISOString();
-        weeklyEarnings[weekKey] = (weeklyEarnings[weekKey] || 0) + earnings;
-      }
-    });
-
-    // Actually, weekly logic for Friday salaries
     const actualWeekly: Record<string, number> = {};
     workLogs.forEach(log => {
       const rule = workRules?.find(r => r.id === log.workRuleId);
@@ -251,9 +240,12 @@ export function Dashboard() {
     return allTransactionsCombined.filter(t => {
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
-      return matchesSearch && matchesCategory;
+      const matchesTab = activeTab === 'all' || 
+                         (activeTab === 'income' && t.type === 'Income') || 
+                         (activeTab === 'expense' && t.type === 'Expense');
+      return matchesSearch && matchesCategory && matchesTab;
     });
-  }, [allTransactionsCombined, searchTerm, categoryFilter]);
+  }, [allTransactionsCombined, searchTerm, categoryFilter, activeTab]);
 
   const handleCarryOver = () => {
     if (!transactionsCollectionRef || !user) return;
@@ -444,7 +436,7 @@ export function Dashboard() {
 
         {/* Transactions Section */}
         <div className="space-y-6">
-          <Tabs defaultValue="all" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                <TabsList className="bg-white shadow-sm border border-slate-100 rounded-2xl p-1 w-full md:w-auto h-auto">
                 <TabsTrigger value="all" className="rounded-xl px-6 py-2">Tüm İşlemler</TabsTrigger>
@@ -476,6 +468,32 @@ export function Dashboard() {
             </div>
 
             <TabsContent value="all" className="mt-8">
+               <TransactionsTable
+                  transactions={filteredTransactions}
+                  categories={categories}
+                  onDeleteTransaction={(id) => {
+                    if (id.startsWith('salary-') || id.startsWith('sub-')) return;
+                    if (!user) return;
+                    const ref = doc(firestore, 'users', user.uid, 'transactions', id);
+                    deleteDocumentNonBlocking(ref);
+                  }}
+                  formatCurrency={formatCurrency}
+                />
+            </TabsContent>
+            <TabsContent value="income" className="mt-8">
+               <TransactionsTable
+                  transactions={filteredTransactions}
+                  categories={categories}
+                  onDeleteTransaction={(id) => {
+                    if (id.startsWith('salary-') || id.startsWith('sub-')) return;
+                    if (!user) return;
+                    const ref = doc(firestore, 'users', user.uid, 'transactions', id);
+                    deleteDocumentNonBlocking(ref);
+                  }}
+                  formatCurrency={formatCurrency}
+                />
+            </TabsContent>
+            <TabsContent value="expense" className="mt-8">
                <TransactionsTable
                   transactions={filteredTransactions}
                   categories={categories}
