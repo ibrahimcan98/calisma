@@ -350,7 +350,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                       name={`daySpecificTimes.${day}.startTime`}
                       render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormControl><Input type="time" {...field} value={field.value ?? '09:00'} className="h-8 text-xs" /></FormControl>
+                          <FormControl><Input type="time" {...field} value={field.value || '09:00'} className="h-8 text-xs" /></FormControl>
                         </FormItem>
                       )}
                     />
@@ -360,7 +360,7 @@ export function AddWorkRuleSheet({ isOpen, onOpenChange }: { isOpen: boolean; on
                       name={`daySpecificTimes.${day}.endTime`}
                       render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormControl><Input type="time" {...field} value={field.value ?? '18:00'} className="h-8 text-xs" /></FormControl>
+                          <FormControl><Input type="time" {...field} value={field.value || '18:00'} className="h-8 text-xs" /></FormControl>
                         </FormItem>
                       )}
                     />

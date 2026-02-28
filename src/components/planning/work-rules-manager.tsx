@@ -44,11 +44,9 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
   const handleDeleteRule = (id: string) => {
     if (!user) return;
     
-    // Düzenin kendisini sil
     const ruleRef = doc(firestore, 'users', user.uid, 'workRules', id);
     deleteDocumentNonBlocking(ruleRef);
 
-    // Bu düzene bağlı tüm logları da sil
     const logsToDelete = logs.filter(log => log.workRuleId === id);
     logsToDelete.forEach(log => {
       const logRef = doc(firestore, 'users', user.uid, 'workLogs', log.id);
@@ -85,7 +83,6 @@ export function WorkRulesManager({ rules, logs }: WorkRulesManagerProps) {
       const dayName = DAY_NAME_MAP[getDay(day)];
       
       if (rule.daysOfWeek.includes(dayName)) {
-        // Çakışma kontrolü
         const alreadyExists = logs.some(l => isSameDay(l.date, day) && l.workRuleId === rule.id);
         
         if (!alreadyExists) {
