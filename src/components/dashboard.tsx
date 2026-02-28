@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -10,46 +9,65 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from '@/components/ui/card';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
-  Circle,
   DollarSign,
   Plus,
   Sparkles,
   CalendarDays,
   History,
-  Scale,
   PiggyBank,
-  Briefcase,
   TrendingUp,
+  Search,
+  Filter,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TransactionsTable } from './transactions-table';
 import { AddTransactionSheet } from './add-transaction-sheet';
 import { ExpenditureAnalysisDialog } from './expenditure-analysis-dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { startOfMonth, subMonths, differenceInCalendarMonths, isSameWeek, startOfWeek, endOfWeek, addDays, addMonths, addYears, isAfter, isBefore, isSameDay } from 'date-fns';
+import { startOfMonth, subMonths, differenceInCalendarMonths, isSameWeek, isBefore, isSameDay, format, isToday, isYesterday, startOfToday } from 'date-fns';
+import { tr } from 'date-fns/locale';
 import { SavingsGoals } from './savings-goals';
 import { SubscriptionsPanel } from './subscriptions-panel';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  LineChart,
+  Line,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  AreaChart,
+  Area,
+} from 'recharts';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function Dashboard() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [categories, setCategories] =
-    useState<Category[]>(initialCategories);
+  const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [isAnalysisDialogOpen, setAnalysisDialogOpen] = useState(false);
-  const [editableLastMonthSavings, setEditableLastMonthSavings] = useState('0.00');
+  const [editableLastMonthSavings, setEditableLastMonthSavings] = useState('0,00');
   const [isMounted, setIsMounted] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   useEffect(() => {
     setIsMounted(true);
@@ -62,14 +80,14 @@ export function Dashboard() {
   }, [firestore, user]);
   const { data: rawTransactions } = useCollection<Omit<Transaction, 'id'>>(transactionsCollectionRef);
 
-  // Work Rules (for hourly rates)
+  // Work Rules
   const workRulesCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, 'users', user.uid, 'workRules');
   }, [firestore, user]);
   const { data: workRules } = useCollection<WorkRule>(workRulesCollectionRef);
 
-  // Work Logs (for earnings)
+  // Work Logs
   const workLogsCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, 'users', user.uid, 'workLogs');
@@ -107,30 +125,43 @@ export function Dashboard() {
     }));
   }, [rawSubscriptions]);
 
-  // Generate virtual transactions for Friday Salaries and Subscription Payments
+  // Virtual transactions (Salaries and Subscriptions)
   const virtualTransactions = useMemo(() => {
     if (!isMounted || !user) return [];
     const virtuals: Transaction[] = [];
     const now = new Date();
 
-    // 1. Weekly Friday Salary
-    // Group earnings by week (Monday to Sunday)
     const weeklyEarnings: Record<string, number> = {};
     workLogs.forEach(log => {
       const rule = workRules?.find(r => r.id === log.workRuleId);
       if (rule && rule.hourlyRate) {
         const earnings = (log.totalWorkDurationMinutes / 60) * rule.hourlyRate;
-        const weekStart = startOfWeek(log.date, { weekStartsOn: 1 });
+        const weekStart = startOfMonth(log.date); // Use month as key for grouping
         const weekKey = weekStart.toISOString();
         weeklyEarnings[weekKey] = (weeklyEarnings[weekKey] || 0) + earnings;
       }
     });
 
-    Object.entries(weeklyEarnings).forEach(([weekKey, amount]) => {
+    // Actually, weekly logic for Friday salaries
+    const actualWeekly: Record<string, number> = {};
+    workLogs.forEach(log => {
+      const rule = workRules?.find(r => r.id === log.workRuleId);
+      if (rule && rule.hourlyRate) {
+        const earnings = (log.totalWorkDurationMinutes / 60) * rule.hourlyRate;
+        const d = new Date(log.date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const weekStart = new Date(d.setDate(diff));
+        weekStart.setHours(0,0,0,0);
+        const key = weekStart.toISOString();
+        actualWeekly[key] = (actualWeekly[key] || 0) + earnings;
+      }
+    });
+
+    Object.entries(actualWeekly).forEach(([weekKey, amount]) => {
       const weekStart = new Date(weekKey);
-      const friday = addDays(weekStart, 4); // Friday of that week
-      
-      // Only show salary if it's already occurred
+      const friday = new Date(weekStart);
+      friday.setDate(weekStart.getDate() + 4);
       if (isBefore(friday, now) || isSameDay(friday, now)) {
         virtuals.push({
           id: `salary-${weekKey}`,
@@ -144,13 +175,10 @@ export function Dashboard() {
       }
     });
 
-    // 2. Subscription Payments
     subscriptions.forEach(sub => {
       let paymentDate = new Date(sub.startDate);
-      // Ensure we don't calculate thousands of years if date is wrong
       let safetyCounter = 0;
-      
-      while ((isBefore(paymentDate, now) || isSameDay(paymentDate, now)) && safetyCounter < 100) {
+      while ((isBefore(paymentDate, now) || isSameDay(paymentDate, now)) && safetyCounter < 24) {
         virtuals.push({
           id: `sub-${sub.id}-${paymentDate.toISOString()}`,
           userId: user.uid,
@@ -160,12 +188,7 @@ export function Dashboard() {
           description: `${sub.name} Abonelik Ödemesi`,
           date: new Date(paymentDate),
         });
-
-        if (sub.frequency === 'monthly') {
-          paymentDate = addMonths(paymentDate, 1);
-        } else {
-          paymentDate = addYears(paymentDate, 1);
-        }
+        paymentDate = sub.frequency === 'monthly' ? new Date(paymentDate.setMonth(paymentDate.getMonth() + 1)) : new Date(paymentDate.setFullYear(paymentDate.getFullYear() + 1));
         safetyCounter++;
       }
     });
@@ -173,315 +196,317 @@ export function Dashboard() {
     return virtuals;
   }, [workLogs, workRules, subscriptions, isMounted, user]);
 
-  // Combined financial stats
-  const stats = useMemo(() => {
-    if (!isMounted) {
-      return {
-        balance: 0,
-        totalIncome: 0,
-        totalExpenses: 0,
-        currentMonthExpenses: 0,
-        lastMonthExpenses: 0,
-        averageMonthlyExpense: 0,
-        lastMonthSavings: 0,
-      };
-    }
-
-    const now = new Date();
-    const startOfCurrentMonth = startOfMonth(now);
-    const startOfLastMonth = startOfMonth(subMonths(now, 1));
-    
-    // Merge real and virtual transactions for calculation
-    const allItems = [...transactions, ...virtualTransactions];
-    
-    let totalIncome = 0;
-    let totalExpenses = 0;
-    let currentMonthExpenses = 0;
-    let lastMonthExpenses = 0;
-    let lastMonthIncome = 0;
-
-    for (const t of allItems) {
-        if (t.type === 'Income') {
-            totalIncome += t.amount;
-            if (t.date >= startOfLastMonth && t.date < startOfCurrentMonth) {
-                lastMonthIncome += t.amount;
-            }
-        } else { // Expense
-            totalExpenses += t.amount;
-            if (t.date >= startOfCurrentMonth) {
-                currentMonthExpenses += t.amount;
-            } else if (t.date >= startOfLastMonth && t.date < startOfCurrentMonth) {
-                lastMonthExpenses += t.amount;
-            }
-        }
-    }
-
-    const oldestTransaction = allItems.length > 0 ? allItems.reduce((earliest, t) => earliest.date > t.date ? t : earliest) : {date: new Date()};
-    const totalMonths = Math.max(1, differenceInCalendarMonths(now, oldestTransaction.date) + 1);
-    const averageMonthlyExpense = totalExpenses / totalMonths;
-    const lastMonthSavings = lastMonthIncome - lastMonthExpenses;
-
-    return {
-      balance: totalIncome - totalExpenses,
-      totalIncome,
-      totalExpenses,
-      currentMonthExpenses,
-      lastMonthExpenses,
-      averageMonthlyExpense,
-      lastMonthSavings,
-    };
-  }, [transactions, virtualTransactions, isMounted]);
-  
   const allTransactionsCombined = useMemo(() => {
     return [...transactions, ...virtualTransactions].sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [transactions, virtualTransactions]);
 
-  useEffect(() => {
-    if (isMounted) {
-      setEditableLastMonthSavings(stats.lastMonthSavings.toFixed(2));
-    }
-  }, [stats.lastMonthSavings, isMounted]);
-
-  const hasCarryOverForCurrentMonth = useMemo(() => {
-    if (!isMounted) return false;
+  const stats = useMemo(() => {
+    if (!isMounted) return { balance: 0, totalIncome: 0, totalExpenses: 0, currentMonthExpenses: 0, lastMonthExpenses: 0, lastMonthSavings: 0 };
     const now = new Date();
-    const startOfCurrentMonth = startOfMonth(now);
-    return transactions.some(t => 
-        t.description === 'Geçen aydan devir' && 
-        t.date >= startOfCurrentMonth
-    );
-  }, [transactions, isMounted]);
-
-  const handleAddTransaction = (transaction: Omit<Transaction, 'id' | 'userId'>) => {
-    if (!transactionsCollectionRef || !user) return;
+    const startOfCurr = startOfMonth(now);
+    const startOfLast = startOfMonth(subMonths(now, 1));
     
-    const finalData = {
-      type: transaction.type,
-      amount: transaction.amount,
-      date: transaction.date,
-      category: transaction.category,
-      subCategory: transaction.subCategory || "",
-      description: transaction.description,
-      userId: user.uid
-    };
-    
-    addDocumentNonBlocking(transactionsCollectionRef, finalData);
-  };
+    let ti = 0, te = 0, cme = 0, lme = 0, lmi = 0;
+    allTransactionsCombined.forEach(t => {
+      if (t.type === 'Income') {
+        ti += t.amount;
+        if (t.date >= startOfLast && t.date < startOfCurr) lmi += t.amount;
+      } else {
+        te += t.amount;
+        if (t.date >= startOfCurr) cme += t.amount;
+        else if (t.date >= startOfLast && t.date < startOfCurr) lme += t.amount;
+      }
+    });
 
-  const handleDeleteTransaction = (id: string) => {
-    if (id.startsWith('salary-') || id.startsWith('sub-')) {
-        toast({
-            title: "Otomatik İşlem",
-            description: "Bu işlem mesai kayıtları veya aboneliklerden otomatik üretilmiştir. Silmek için ilgili kaydı düzenleyin.",
-        });
-        return;
-    }
-    if (!user || !firestore) return;
-    const transactionRef = doc(firestore, 'users', user.uid, 'transactions', id);
-    deleteDocumentNonBlocking(transactionRef);
-  };
+    return { balance: ti - te, totalIncome: ti, totalExpenses: te, currentMonthExpenses: cme, lastMonthExpenses: lme, lastMonthSavings: lmi - lme };
+  }, [allTransactionsCombined, isMounted]);
 
-  const handleAddCategory = (category: Omit<Category, 'icon'>): Category => {
-    const newCategory: Category = { ...category, icon: Circle };
-    setCategories((prev) => [...prev, newCategory]);
-    return newCategory;
-  };
-  
+  // Chart Data: Last 6 months
+  const chartData = useMemo(() => {
+    if (!isMounted) return [];
+    const months = Array.from({ length: 6 }).map((_, i) => startOfMonth(subMonths(new Date(), 5 - i)));
+    return months.map(m => {
+      const nextM = new Date(m);
+      nextM.setMonth(m.getMonth() + 1);
+      const filtered = allTransactionsCombined.filter(t => t.date >= m && t.date < nextM);
+      const inc = filtered.filter(t => t.type === 'Income').reduce((s, t) => s + t.amount, 0);
+      const exp = filtered.filter(t => t.type === 'Expense').reduce((s, t) => s + t.amount, 0);
+      return {
+        name: format(m, 'MMM', { locale: tr }),
+        gelir: inc,
+        gider: exp,
+      };
+    });
+  }, [allTransactionsCombined, isMounted]);
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR',
-    }).format(amount);
+    const formatted = new Intl.NumberFormat('de-DE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Math.abs(amount));
+    return `${amount < 0 ? '-' : ''}${formatted} €`;
   };
+
+  const filteredTransactions = useMemo(() => {
+    return allTransactionsCombined.filter(t => {
+      const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+  }, [allTransactionsCombined, searchTerm, categoryFilter]);
 
   const handleCarryOver = () => {
     if (!transactionsCollectionRef || !user) return;
-    
-    const amountToAdd = parseFloat(editableLastMonthSavings);
-
-    if (isNaN(amountToAdd) || amountToAdd <= 0) {
-      toast({
-        variant: "destructive",
-        title: "İşlem Başarısız",
-        description: "Yalnızca pozitif tutarlar gelire eklenebilir.",
-      });
-      return;
-    }
-
-    if (hasCarryOverForCurrentMonth) {
-        toast({
-            variant: 'default',
-            title: 'Bilgi',
-            description: 'Geçen aydan kalan tutar bu ay için zaten gelire eklenmiş.',
-        });
-        return;
-    }
-
-    const carryOverTransaction = {
-      type: 'Income' as 'Income',
-      amount: amountToAdd,
+    const amount = parseFloat(editableLastMonthSavings.replace(',', '.'));
+    if (isNaN(amount) || amount <= 0) return;
+    addDocumentNonBlocking(transactionsCollectionRef, {
+      type: 'Income',
+      amount,
       date: new Date(),
       category: 'other',
       description: 'Geçen aydan devir',
       userId: user.uid,
-    };
-    
-    addDocumentNonBlocking(transactionsCollectionRef, carryOverTransaction);
-
-    toast({
-      title: "Başarılı!",
-      description: `${formatCurrency(amountToAdd)} tutarı gelirinize eklendi.`,
     });
+    toast({ title: "Başarılı!", description: "Tutar gelirinize eklendi." });
   };
 
+  if (!isMounted) return null;
+
   return (
-    <div className="flex min-h-screen w-full flex-col">
+    <div className="flex min-h-screen w-full flex-col bg-slate-50/50">
       <Header />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-green-50/50 border-green-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Toplam Gelir</CardTitle>
-              <ArrowUpCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(stats.totalIncome)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Manuel Gelir + Maaş Kazancı
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-primary/5 border-primary/20">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Toplam Gider</CardTitle>
-              <ArrowDownCircle className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(stats.totalExpenses)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Abonelikler dahil toplam harcama
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-blue-50/50 border-blue-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Net Bakiye</CardTitle>
-              <DollarSign className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-700">
-                {formatCurrency(stats.balance)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Tüm gelir/gider sonrası kalan
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-accent/40 bg-accent/5">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Haftalık Beklenen Maaş</CardTitle>
-              <TrendingUp className="h-4 w-4 text-accent" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-accent">
-                {formatCurrency(allTransactionsCombined.find(t => t.category === 'salary' && isSameWeek(t.date, new Date(), { weekStartsOn: 1 }))?.amount || 0)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Bu Cuma yatması beklenen tutar
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Bu Ayki Gider</CardTitle>
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(stats.currentMonthExpenses)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Geçen Ayki Gider</CardTitle>
-              <History className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(stats.lastMonthExpenses)}
-              </div>
-            </CardContent>
-          </Card>
-           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Geçen Aydan Artan</CardTitle>
-              <PiggyBank className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-               <Input
-                  type="number"
-                  value={editableLastMonthSavings}
-                  onChange={(e) => setEditableLastMonthSavings(e.target.value)}
-                  className="text-2xl font-bold h-auto p-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-                />
-            </CardContent>
-            {parseFloat(editableLastMonthSavings) > 0 && !hasCarryOverForCurrentMonth && (
-              <CardFooter>
-                  <Button className="w-full" onClick={handleCarryOver}>
-                      <Plus className="mr-2 h-4 w-4" /> Gelire Ekle
-                  </Button>
-              </CardFooter>
-            )}
-          </Card>
-        </div>
-        
-        <div className="pt-8">
-            <SavingsGoals formatCurrency={formatCurrency} />
-        </div>
-
-        <div className="pt-8">
-            <SubscriptionsPanel categories={categories} formatCurrency={formatCurrency} />
-        </div>
-
-        <div className="flex items-center gap-2 mt-8">
-          <h2 className="text-2xl font-bold tracking-tight flex-1">Son İşlemler</h2>
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="outline" onClick={() => setAnalysisDialogOpen(true)}>
-              <Sparkles className="mr-2 h-4 w-4" />
+      <main className="flex flex-1 flex-col gap-8 p-4 md:p-10 max-w-7xl mx-auto w-full">
+        {/* Upper Header with Month Picker and Action */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+            <div className="flex items-center gap-2 text-slate-500 mt-1">
+              <Calendar className="h-4 w-4" />
+              <span className="text-sm font-medium">{format(new Date(), 'MMMM yyyy', { locale: tr })}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+             <Button variant="outline" onClick={() => setAnalysisDialogOpen(true)} className="rounded-xl shadow-sm border-slate-200">
+              <Sparkles className="mr-2 h-4 w-4 text-amber-500" />
               AI Analizi
             </Button>
-            <Button onClick={() => setAddSheetOpen(true)}>
+            <Button onClick={() => setAddSheetOpen(true)} className="rounded-xl shadow-md bg-primary hover:bg-primary/90 px-6">
               <Plus className="mr-2 h-4 w-4" />
-              İşlem Ekle
+              Yeni İşlem Ekle
             </Button>
           </div>
         </div>
 
-        <TransactionsTable
-          transactions={allTransactionsCombined}
-          categories={categories}
-          onDeleteTransaction={handleDeleteTransaction}
-          formatCurrency={formatCurrency}
-        />
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {/* Main Balance Card */}
+          <Card className="md:col-span-12 lg:col-span-5 rounded-3xl border-none shadow-xl bg-white overflow-hidden group">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Net Bakiye</CardTitle>
+                <div className="p-2 bg-primary/10 rounded-xl">
+                  <DollarSign className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-1">
+                <div className="text-5xl font-black tracking-tighter text-slate-900">
+                  {formatCurrency(stats.balance)}
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                   <div className="flex items-center text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-xs font-bold">
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                    +2.4%
+                  </div>
+                  <span className="text-slate-400 text-xs font-medium">geçen aya göre</span>
+                </div>
+              </div>
+              {/* Sparkline */}
+              <div className="h-16 w-full mt-6 opacity-40 group-hover:opacity-100 transition-opacity">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="gelir" stroke="#3b82f6" fillOpacity={1} fill="url(#colorBalance)" strokeWidth={2} />
+                    </AreaChart>
+                 </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Income & Expense Secondary Cards */}
+          <div className="md:col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <Card className="rounded-3xl border-none shadow-lg bg-white p-6">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-2 bg-emerald-50 rounded-xl">
+                    <ArrowUpCircle className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <CardTitle className="text-slate-400 text-xs font-bold uppercase tracking-widest">Toplam Gelir</CardTitle>
+               </div>
+               <div className="text-3xl font-bold text-slate-900">{formatCurrency(stats.totalIncome)}</div>
+               <p className="text-slate-400 text-xs mt-1">Net kazancınız</p>
+            </Card>
+
+            <Card className="rounded-3xl border-none shadow-lg bg-white p-6">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-2 bg-rose-50 rounded-xl">
+                    <ArrowDownCircle className="h-5 w-5 text-rose-500" />
+                  </div>
+                  <CardTitle className="text-slate-400 text-xs font-bold uppercase tracking-widest">Toplam Gider</CardTitle>
+               </div>
+               <div className="text-3xl font-bold text-rose-600">{formatCurrency(stats.totalExpenses)}</div>
+               <p className="text-slate-400 text-xs mt-1">Tüm harcamalar</p>
+            </Card>
+
+            <Card className="rounded-3xl border-none shadow-md bg-white p-5 flex items-center justify-between">
+              <div>
+                <CardTitle className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Beklenen Maaş</CardTitle>
+                <div className="text-lg font-bold text-slate-700">{formatCurrency(allTransactionsCombined.find(t => t.category === 'salary' && isSameWeek(t.date, new Date(), { weekStartsOn: 1 }))?.amount || 0)}</div>
+              </div>
+              <TrendingUp className="h-5 w-5 text-amber-400 opacity-50" />
+            </Card>
+
+            <Card className="rounded-3xl border-none shadow-md bg-white p-5 flex items-center justify-between">
+              <div>
+                <CardTitle className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Bu Ayki Gider</CardTitle>
+                <div className="text-lg font-bold text-rose-500">{formatCurrency(stats.currentMonthExpenses)}</div>
+              </div>
+              <CalendarDays className="h-5 w-5 text-rose-400 opacity-50" />
+            </Card>
+          </div>
+        </div>
+
+        {/* Charts Section */}
+        <Card className="rounded-3xl border-none shadow-lg bg-white p-8 overflow-hidden">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Gelir & Gider Analizi</h2>
+              <p className="text-sm text-slate-400">Son 6 aylık finansal performansınız</p>
+            </div>
+            <Tabs defaultValue="line" className="w-auto">
+              <TabsList className="bg-slate-100 rounded-xl p-1">
+                <TabsTrigger value="line" className="rounded-lg text-xs">Çizgi</TabsTrigger>
+                <TabsTrigger value="bar" className="rounded-lg text-xs">Sütun</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `${val}€`} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                  formatter={(val: number) => [formatCurrency(val), ""]}
+                />
+                <Line type="monotone" dataKey="gelir" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="gider" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Carry Over & Savings Goals */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card className="rounded-3xl border-none shadow-lg bg-white p-8">
+             <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 bg-indigo-50 rounded-2xl">
+                  <PiggyBank className="h-6 w-6 text-indigo-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Geçen Aydan Devir</h3>
+                  <p className="text-sm text-slate-400">Artan tutarı yeni aya aktarın</p>
+                </div>
+             </div>
+             <div className="flex items-end gap-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                <div className="flex-1">
+                  <label className="text-[10px] font-bold uppercase text-slate-400 mb-2 block">Devredilecek Tutar</label>
+                  <Input
+                    type="text"
+                    value={editableLastMonthSavings}
+                    onChange={(e) => setEditableLastMonthSavings(e.target.value)}
+                    className="text-2xl font-black bg-transparent border-none p-0 focus-visible:ring-0"
+                  />
+                </div>
+                <Button onClick={handleCarryOver} className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 px-8 h-12">
+                  <Plus className="mr-2 h-4 w-4" /> Aktar
+                </Button>
+             </div>
+          </Card>
+          <SavingsGoals formatCurrency={formatCurrency} />
+        </div>
+
+        {/* Transactions Section */}
+        <div className="space-y-6">
+          <Tabs defaultValue="all" className="w-full">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+               <TabsList className="bg-white shadow-sm border border-slate-100 rounded-2xl p-1 w-full md:w-auto h-auto">
+                <TabsTrigger value="all" className="rounded-xl px-6 py-2">Tüm İşlemler</TabsTrigger>
+                <TabsTrigger value="income" className="rounded-xl px-6 py-2">Gelirler</TabsTrigger>
+                <TabsTrigger value="expense" className="rounded-xl px-6 py-2">Giderler</TabsTrigger>
+              </TabsList>
+              
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input 
+                    placeholder="İşlem ara..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 rounded-xl bg-white border-slate-200 shadow-sm" 
+                  />
+                </div>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-[140px] rounded-xl bg-white border-slate-200 shadow-sm">
+                    <Filter className="h-4 w-4 mr-2 text-slate-400" />
+                    <SelectValue placeholder="Kategori" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">Tümü</SelectItem>
+                    {categories.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <TabsContent value="all" className="mt-8">
+               <TransactionsTable
+                  transactions={filteredTransactions}
+                  categories={categories}
+                  onDeleteTransaction={(id) => {
+                    if (id.startsWith('salary-') || id.startsWith('sub-')) return;
+                    if (!user) return;
+                    const ref = doc(firestore, 'users', user.uid, 'transactions', id);
+                    deleteDocumentNonBlocking(ref);
+                  }}
+                  formatCurrency={formatCurrency}
+                />
+            </TabsContent>
+          </Tabs>
+        </div>
+        
+        <SubscriptionsPanel categories={categories} formatCurrency={formatCurrency} />
       </main>
 
       <AddTransactionSheet
         isOpen={isAddSheetOpen}
         onOpenChange={setAddSheetOpen}
         categories={categories}
-        onAddTransaction={handleAddTransaction}
-        onAddCategory={handleAddCategory}
+        onAddTransaction={(t) => {
+          if (!transactionsCollectionRef || !user) return;
+          addDocumentNonBlocking(transactionsCollectionRef, { ...t, userId: user.uid });
+        }}
+        onAddCategory={(c) => {
+          const newCat = { ...c, icon: PiggyBank };
+          setCategories(prev => [...prev, newCat]);
+          return newCat;
+        }}
       />
       <ExpenditureAnalysisDialog
         isOpen={isAnalysisDialogOpen}

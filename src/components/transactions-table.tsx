@@ -9,10 +9,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Calendar } from 'lucide-react';
 import type { Category, Transaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 type TransactionsTableProps = {
   transactions: Transaction[];
@@ -29,93 +30,97 @@ export function TransactionsTable({
 }: TransactionsTableProps) {
   const categoryMap = new Map(categories.map((c) => [c.value, c]));
 
-  return (
-    <div className="w-full overflow-hidden rounded-lg border shadow-sm">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[200px] hidden md:table-cell">
-              Kategori
-            </TableHead>
-            <TableHead>Açıklama</TableHead>
-            <TableHead className="text-right">Tutar</TableHead>
-            <TableHead className="text-right hidden sm:table-cell">
-              Tarih
-            </TableHead>
-            <TableHead className="w-[50px] text-right"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {transactions.length > 0 ? (
-            transactions.map((transaction) => {
-              const category = categoryMap.get(transaction.category);
-              const Icon = category?.icon;
+  // Group transactions by date
+  const groupedTransactions = transactions.reduce((groups, t) => {
+    const dateStr = format(t.date, 'yyyy-MM-dd');
+    if (!groups[dateStr]) groups[dateStr] = [];
+    groups[dateStr].push(t);
+    return groups;
+  }, {} as Record<string, Transaction[]>);
 
-              return (
-                <TableRow key={transaction.id}>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex items-center gap-2">
-                      {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
-                      <span className="font-medium">
-                        {category?.label ?? transaction.category}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-start md:items-center gap-3">
-                      {Icon && (
-                        <Icon className="h-8 w-8 text-muted-foreground md:hidden flex-shrink-0 mt-1" />
-                      )}
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {transaction.description}
-                        </p>
-                        <p className="text-sm text-muted-foreground md:hidden">
-                          {category?.label ?? transaction.category}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      'text-right font-semibold',
-                      transaction.type === 'Income'
-                        ? 'text-green-600'
-                        : transaction.category === 'savings'
-                        ? 'text-blue-600'
-                        : 'text-red-600'
-                    )}
-                  >
-                    {transaction.type === 'Income' ? '+' : '-'}
-                    {formatCurrency(transaction.amount)}
-                  </TableCell>
-                  <TableCell className="text-right hidden sm:table-cell">
-                    {format(transaction.date, 'd MMM, yyyy')}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDeleteTransaction(transaction.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">
-                        İşlemi sil
-                      </span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          ) : (
-            <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center">
-                Bu dönem için işlem yok.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+  const sortedDates = Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a));
+
+  const getDateLabel = (dateStr: string) => {
+    const d = new Date(dateStr);
+    if (isToday(d)) return 'Bugün';
+    if (isYesterday(d)) return 'Dün';
+    return format(d, 'd MMMM', { locale: tr });
+  };
+
+  return (
+    <div className="w-full space-y-8">
+      {sortedDates.length > 0 ? (
+        sortedDates.map(dateStr => (
+          <div key={dateStr} className="space-y-3">
+             <div className="flex items-center gap-2 px-1">
+                <span className="text-xs font-black uppercase tracking-widest text-slate-400">
+                  {getDateLabel(dateStr)}
+                </span>
+                <div className="h-px flex-1 bg-slate-100" />
+             </div>
+             
+             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                <Table>
+                  <TableBody>
+                    {groupedTransactions[dateStr].map((transaction) => {
+                      const category = categoryMap.get(transaction.category);
+                      const Icon = category?.icon;
+                      const isAuto = transaction.id.startsWith('salary-') || transaction.id.startsWith('sub-');
+
+                      return (
+                        <TableRow key={transaction.id} className="group hover:bg-slate-50/80 transition-all border-slate-50 last:border-0">
+                          <TableCell className="w-[64px] py-4 pl-6">
+                            <div className={cn(
+                              "h-10 w-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110",
+                              transaction.type === 'Income' ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-500"
+                            )}>
+                              {Icon ? <Icon className="h-5 w-5" /> : <Calendar className="h-5 w-5" />}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-4">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-slate-900 group-hover:text-primary transition-colors">
+                                {transaction.description}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                {category?.label ?? transaction.category}
+                                {transaction.subCategory && ` • ${transaction.subCategory}`}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-4 text-right pr-6">
+                            <div className="flex flex-col items-end">
+                              <span className={cn(
+                                'text-lg font-black tracking-tight',
+                                transaction.type === 'Income' ? 'text-emerald-600' : 'text-rose-600'
+                              )}>
+                                {transaction.type === 'Income' ? '+' : '-'}
+                                {formatCurrency(transaction.amount)}
+                              </span>
+                              {!isAuto && (
+                                <button
+                                  onClick={() => onDeleteTransaction(transaction.id)}
+                                  className="text-[10px] text-slate-300 hover:text-rose-500 font-bold uppercase transition-colors opacity-0 group-hover:opacity-100 mt-1"
+                                >
+                                  Sil
+                                </button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+             </div>
+          </div>
+        ))
+      ) : (
+        <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-20 text-center">
+            <Calendar className="mx-auto h-12 w-12 text-slate-200 mb-4" />
+            <p className="text-slate-400 font-medium">Bu dönem için henüz işlem kaydı bulunmuyor.</p>
+        </div>
+      )}
     </div>
   );
 }
