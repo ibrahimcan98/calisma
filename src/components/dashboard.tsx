@@ -112,14 +112,6 @@ export function Dashboard() {
     }));
   }, [rawTransactions]);
 
-  const workLogs = useMemo(() => {
-    if (!rawWorkLogs) return [];
-    return rawWorkLogs.map(l => ({
-      ...l,
-      date: (l.date as any).toDate ? (l.date as any).toDate() : new Date(l.date),
-    }));
-  }, [rawWorkLogs]);
-
   const subscriptions = useMemo(() => {
     if (!rawSubscriptions) return [];
     return rawSubscriptions.map(s => ({
@@ -128,44 +120,13 @@ export function Dashboard() {
     }));
   }, [rawSubscriptions]);
 
-  // Virtual transactions (Salaries and Subscriptions)
+  // Virtual transactions (Only Subscriptions now, incomes are manual)
   const virtualTransactions = useMemo(() => {
     if (!isMounted || !user) return [];
     const virtuals: Transaction[] = [];
     const now = new Date();
 
-    const actualWeekly: Record<string, number> = {};
-    workLogs.forEach(log => {
-      const rule = workRules?.find(r => r.id === log.workRuleId);
-      if (rule && rule.hourlyRate) {
-        const earnings = (log.totalWorkDurationMinutes / 60) * rule.hourlyRate;
-        const d = new Date(log.date);
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        const weekStart = new Date(d.setDate(diff));
-        weekStart.setHours(0,0,0,0);
-        const key = weekStart.toISOString();
-        actualWeekly[key] = (actualWeekly[key] || 0) + earnings;
-      }
-    });
-
-    Object.entries(actualWeekly).forEach(([weekKey, amount]) => {
-      const weekStart = new Date(weekKey);
-      const friday = new Date(weekStart);
-      friday.setDate(weekStart.getDate() + 4);
-      if (friday <= now) {
-        virtuals.push({
-          id: `salary-${weekKey}`,
-          userId: user.uid,
-          amount,
-          type: 'Income',
-          category: 'salary',
-          description: 'Haftalık Maaş Ödemesi',
-          date: friday,
-        });
-      }
-    });
-
+    // Subscriptions as automatic expenses
     subscriptions.forEach(sub => {
       let paymentDate = new Date(sub.startDate);
       let safetyCounter = 0;
@@ -185,7 +146,7 @@ export function Dashboard() {
     });
 
     return virtuals;
-  }, [workLogs, workRules, subscriptions, isMounted, user]);
+  }, [subscriptions, isMounted, user]);
 
   const allTransactionsCombined = useMemo(() => {
     return [...transactions, ...virtualTransactions].sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -359,7 +320,7 @@ export function Dashboard() {
 
             <Card className="rounded-3xl border-none shadow-md bg-white p-5 flex items-center justify-between">
               <div>
-                <CardTitle className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Beklenen Maaş</CardTitle>
+                <CardTitle className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Maaş (Manuel)</CardTitle>
                 <div className="text-lg font-bold text-slate-700">{formatCurrency(allTransactionsCombined.find(t => t.category === 'salary' && isSameWeek(t.date, new Date(), { weekStartsOn: 1 }))?.amount || 0)}</div>
               </div>
               <TrendingUp className="h-5 w-5 text-amber-400 opacity-50" />
@@ -488,7 +449,7 @@ export function Dashboard() {
                   transactions={filteredTransactions}
                   categories={categories}
                   onDeleteTransaction={(id) => {
-                    if (id.startsWith('salary-') || id.startsWith('sub-')) return;
+                    if (id.startsWith('sub-')) return;
                     if (!user) return;
                     const ref = doc(firestore, 'users', user.uid, 'transactions', id);
                     deleteDocumentNonBlocking(ref);
@@ -501,7 +462,7 @@ export function Dashboard() {
                   transactions={filteredTransactions}
                   categories={categories}
                   onDeleteTransaction={(id) => {
-                    if (id.startsWith('salary-') || id.startsWith('sub-')) return;
+                    if (id.startsWith('sub-')) return;
                     if (!user) return;
                     const ref = doc(firestore, 'users', user.uid, 'transactions', id);
                     deleteDocumentNonBlocking(ref);
@@ -514,7 +475,7 @@ export function Dashboard() {
                   transactions={filteredTransactions}
                   categories={categories}
                   onDeleteTransaction={(id) => {
-                    if (id.startsWith('salary-') || id.startsWith('sub-')) return;
+                    if (id.startsWith('sub-')) return;
                     if (!user) return;
                     const ref = doc(firestore, 'users', user.uid, 'transactions', id);
                     deleteDocumentNonBlocking(ref);
