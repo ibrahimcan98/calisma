@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -83,20 +84,6 @@ export function Dashboard() {
   }, [firestore, user]);
   const { data: rawTransactions } = useCollection<Omit<Transaction, 'id'>>(transactionsCollectionRef);
 
-  // Work Rules
-  const workRulesCollectionRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, 'users', user.uid, 'workRules');
-  }, [firestore, user]);
-  const { data: workRules } = useCollection<WorkRule>(workRulesCollectionRef);
-
-  // Work Logs
-  const workLogsCollectionRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, 'users', user.uid, 'workLogs');
-  }, [firestore, user]);
-  const { data: rawWorkLogs } = useCollection<Omit<WorkLog, 'id'>>(workLogsCollectionRef);
-
   // Subscriptions
   const subscriptionsCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -120,7 +107,7 @@ export function Dashboard() {
     }));
   }, [rawSubscriptions]);
 
-  // Virtual transactions (Only Subscriptions now, incomes are manual)
+  // Virtual transactions (Subscriptions only - Manual Income chosen)
   const virtualTransactions = useMemo(() => {
     if (!isMounted || !user) return [];
     const virtuals: Transaction[] = [];
@@ -231,7 +218,7 @@ export function Dashboard() {
     <div className="flex min-h-screen w-full flex-col bg-slate-50/50">
       <Header />
       <main className="flex flex-1 flex-col gap-8 p-4 md:p-10 max-w-7xl mx-auto w-full">
-        {/* Upper Header with Month Picker and Action */}
+        {/* Upper Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
