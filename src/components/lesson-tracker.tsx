@@ -8,7 +8,7 @@ import type { Student, LessonLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { LinkIcon, Plus, Trash2, Users, Wallet, TrendingUp, BookUser, ChevronDown } from 'lucide-react';
+import { LinkIcon, Plus, Trash2, Users, Wallet, TrendingUp, BookUser, ChevronDown, Edit2, ArrowUp, ArrowDown, X } from 'lucide-react';
 import Link from 'next/link';
 import {
   AlertDialog,
@@ -26,7 +26,14 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"
+} from "@/components/ui/accordion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { startOfWeek, format, isSameWeek, endOfWeek } from 'date-fns';
@@ -42,6 +49,11 @@ export function LessonTracker() {
   const [newStudentBalance, setNewStudentBalance] = useState('');
   const [fundsToAdd, setFundsToAdd] = useState<Record<string, string>>({});
   const [isMounted, setIsMounted] = useState(false);
+  
+  // Edit Student State
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
 
   useEffect(() => {
     setIsMounted(true);
@@ -65,7 +77,7 @@ export function LessonTracker() {
     return rawStudents.map(s => ({
       ...s,
       createdAt: (s.createdAt as any)?.toDate() ?? new Date(),
-    })).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.createdAt.getTime() - b.createdAt.getTime());
   }, [rawStudents]);
   
   const lessonLogs = useMemo(() => {
@@ -128,7 +140,6 @@ export function LessonTracker() {
       }
   };
 
-
   const handleAddStudent = () => {
     const name = newStudentName.trim();
     const lessonPrice = parseFloat(newStudentLessonPrice);
@@ -150,6 +161,7 @@ export function LessonTracker() {
       balance,
       userId: user.uid,
       createdAt: serverTimestamp(),
+      order: students.length,
     });
     setNewStudentName('');
     setNewStudentLessonPrice('');
@@ -157,11 +169,41 @@ export function LessonTracker() {
     toast({ title: "Öğrenci Eklendi", description: `${name} listeye eklendi.`});
   };
 
+  const handleUpdateStudent = () => {
+    if (!user || !editingStudent) return;
+    const price = parseFloat(editPrice);
+    if (!editName.trim() || isNaN(price) || price <= 0) return;
+
+    const studentRef = doc(firestore, 'users', user.uid, 'students', editingStudent.id);
+    updateDocumentNonBlocking(studentRef, {
+      name: editName.trim(),
+      lessonPrice: price,
+    });
+    setEditingStudent(null);
+    toast({ title: "Güncellendi", description: "Öğrenci bilgileri güncellendi." });
+  };
+
   const handleDeleteStudent = (id: string) => {
     if (!user) return;
     const studentRef = doc(firestore, 'users', user.uid, 'students', id);
     deleteDocumentNonBlocking(studentRef);
     toast({ variant: 'destructive', title: "Öğrenci Silindi", description: "Seçilen öğrenci listeden kaldırıldı."});
+  };
+
+  const handleMoveStudent = (student: Student, direction: 'up' | 'down') => {
+    if (!user) return;
+    const currentIndex = students.findIndex(s => s.id === student.id);
+    if (direction === 'up' && currentIndex === 0) return;
+    if (direction === 'down' && currentIndex === students.length - 1) return;
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const targetStudent = students[targetIndex];
+
+    const currentRef = doc(firestore, 'users', user.uid, 'students', student.id);
+    const targetRef = doc(firestore, 'users', user.uid, 'students', targetStudent.id);
+
+    updateDocumentNonBlocking(currentRef, { order: targetIndex });
+    updateDocumentNonBlocking(targetRef, { order: currentIndex });
   };
   
   const handleLessonDone = (student: Student, e: React.MouseEvent) => {
@@ -192,6 +234,38 @@ export function LessonTracker() {
     });
     
     toast({ title: "Ders İşlendi", description: `${student.name} için bakiye güncellendi.`});
+  };
+
+  const handleDeleteLessonLog = (log: LessonLog) => {
+    if (!user) return;
+    
+    // 1. Find the student to restore balance
+    const student = students.find(s => s.id === log.studentId);
+    if (student) {
+      const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
+      const newBalance = student.balance + log.lessonPrice;
+      
+      // Update student balance (add back 1 lesson)
+      updateDocumentNonBlocking(studentRef, { balance: newBalance });
+
+      // Add audit log for balance restoration
+      const balanceLogsCollectionRef = collection(firestore, 'users', user.uid, 'students', student.id, 'balanceLogs');
+      addDocumentNonBlocking(balanceLogsCollectionRef, {
+          userId: user.uid,
+          studentId: student.id,
+          studentName: student.name,
+          date: new Date(),
+          amountChanged: log.lessonPrice,
+          newBalance: newBalance,
+          description: "Ders kaydı silindi, bakiye iade edildi",
+      });
+    }
+
+    // 2. Delete the lesson log
+    const logRef = doc(firestore, 'users', user.uid, 'lessonLogs', log.id);
+    deleteDocumentNonBlocking(logRef);
+
+    toast({ title: "Ders Silindi", description: "Ders kaydı silindi ve öğrenci bakiyesi iade edildi." });
   };
   
   const handleAddFunds = (student: Student, e: React.MouseEvent) => {
@@ -330,10 +404,32 @@ export function LessonTracker() {
 
           {students.length > 0 ? (
             <div className="w-full space-y-4">
-              {students.map(student => (
+              {students.map((student, index) => (
                 <Accordion type="single" collapsible key={student.id} className="border rounded-md overflow-hidden bg-card">
                   <AccordionItem value={student.id} className="border-none">
                     <div className="flex items-center pr-4">
+                      {/* Sorting Controls */}
+                      <div className="flex flex-col gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6" 
+                          disabled={index === 0}
+                          onClick={() => handleMoveStudent(student, 'up')}
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6" 
+                          disabled={index === students.length - 1}
+                          onClick={() => handleMoveStudent(student, 'down')}
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                      </div>
+
                       <AccordionTrigger asChild>
                         <div className="flex-1 flex items-center gap-4 p-4 cursor-pointer font-medium hover:no-underline">
                           <Users className="h-6 w-6 text-primary flex-shrink-0" />
@@ -388,6 +484,18 @@ export function LessonTracker() {
                       </div>
 
                       <div className="ml-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                              setEditingStudent(student);
+                              setEditName(student.name);
+                              setEditPrice(student.lessonPrice.toString());
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                                <Button variant="ghost" size="icon">
@@ -443,7 +551,7 @@ export function LessonTracker() {
       <Card>
         <CardHeader>
             <CardTitle>Ders Geçmişi</CardTitle>
-            <CardDescription>Haftalık tamamlanan dersler.</CardDescription>
+            <CardDescription>Haftalık tamamlanan dersler. Yanlış kayıtları buradan silebilirsiniz.</CardDescription>
         </CardHeader>
         <CardContent>
             {lessonLogs.length > 0 ? (
@@ -464,9 +572,33 @@ export function LessonTracker() {
                                 <AccordionContent>
                                     <ul className="space-y-2 pl-2">
                                         {weekData.lessons.map(log => (
-                                            <li key={log.id} className="flex justify-between items-center text-sm">
-                                                <span>{log.studentName}</span>
-                                                <span className="text-muted-foreground">{format(log.date, 'eeee, HH:mm', { locale: tr })}</span>
+                                            <li key={log.id} className="flex justify-between items-center text-sm group">
+                                                <div className="flex items-center gap-2">
+                                                  <span>{log.studentName}</span>
+                                                  <span className="text-muted-foreground">{format(log.date, 'eeee, HH:mm', { locale: tr })}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                  <span className="font-medium">{formatCurrency(log.lessonPrice)}</span>
+                                                  <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                      </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                      <AlertDialogHeader>
+                                                        <AlertDialogTitle>Ders Kaydını Sil?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                          Bu ders kaydını silmek, öğrencinin bakiyesini iade edecek ve kalan ders sayısını 1 artıracaktır.
+                                                        </AlertDialogDescription>
+                                                      </AlertDialogHeader>
+                                                      <AlertDialogFooter>
+                                                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteLessonLog(log)} className="bg-destructive hover:bg-destructive/90">Sil ve İade Et</AlertDialogAction>
+                                                      </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                  </AlertDialog>
+                                                </div>
                                             </li>
                                         ))}
                                     </ul>
@@ -480,6 +612,38 @@ export function LessonTracker() {
             )}
         </CardContent>
       </Card>
+
+      {/* Edit Student Dialog */}
+      <Dialog open={!!editingStudent} onOpenChange={(open) => !open && setEditingStudent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Öğrenci Bilgilerini Düzenle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Öğrenci Adı</label>
+              <Input 
+                value={editName} 
+                onChange={(e) => setEditName(e.target.value)} 
+                placeholder="İsim"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Ders Ücreti (€)</label>
+              <Input 
+                type="number" 
+                value={editPrice} 
+                onChange={(e) => setEditPrice(e.target.value)} 
+                placeholder="Ücret"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingStudent(null)}>İptal</Button>
+            <Button onClick={handleUpdateStudent}>Güncelle</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

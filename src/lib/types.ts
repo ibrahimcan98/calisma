@@ -46,6 +46,7 @@ export type Student = {
   balance: number;
   lessonPrice: number;
   createdAt: Date;
+  order?: number;
 };
 
 export type LessonLog = {
