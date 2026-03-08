@@ -36,7 +36,7 @@ export function Header() {
               <Wallet className="h-6 w-6 text-primary-foreground" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-foreground hidden sm:block">
-              FinTrack
+              Onder Family
             </h1>
           </Link>
 
@@ -71,7 +71,7 @@ export function Header() {
 
           {!isUserLoading && user && (
             <div className="flex items-center gap-2">
-              {/* Mobil Navigasyon (Dropdown içinde kalmaya devam eder) */}
+              {/* Mobil Navigasyon */}
               <div className="md:hidden">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

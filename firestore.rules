@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * # FİNTRACK PERSONAL - GÜVENLİK KURALLARI
+     * # ONDER FAMILY - GÜVENLİK KURALLARI
      */
 
     function isSignedIn() {

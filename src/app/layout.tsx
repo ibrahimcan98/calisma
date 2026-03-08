@@ -4,8 +4,8 @@ import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'FinTrack Personal',
-  description: 'Your personal finance tracker.',
+  title: 'Onder Family',
+  description: 'Family finance and planning tracker.',
 };
 
 export default function RootLayout({
