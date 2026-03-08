@@ -7,7 +7,6 @@ import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlo
 import type { Student, LessonLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { LinkIcon, Plus, Trash2, Users, Wallet, TrendingUp, BookUser, ChevronDown, Edit2, ArrowUp, ArrowDown, X } from 'lucide-react';
 import Link from 'next/link';
 import {
