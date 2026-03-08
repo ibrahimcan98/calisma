@@ -46,13 +46,42 @@ export function SubscriptionsPanel({ categories, formatCurrency }: Subscriptions
 
   const { data: rawSubscriptions } = useCollection<Omit<Subscription, 'id'>>(subscriptionsCollectionRef);
 
+  const calculateNextPaymentDate = (startDate: Date, frequency: 'monthly' | 'yearly'): Date => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); 
+    let nextDate = new Date(startDate.getTime());
+
+    // Safety check to avoid infinite loops if data is corrupt
+    let safety = 0;
+    while (nextDate < now && safety < 120) {
+        if (frequency === 'monthly') {
+            nextDate = addMonths(nextDate, 1);
+        } else { // yearly
+            nextDate = addYears(nextDate, 1);
+        }
+        safety++;
+    }
+    return nextDate;
+  };
+
   const subscriptions = useMemo(() => {
     if (!rawSubscriptions) return [];
-    return rawSubscriptions.map(s => ({
+    
+    const subs = rawSubscriptions.map(s => ({
       ...s,
-      startDate: (s.startDate as any)?.toDate() ?? new Date(),
-    })).sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  }, [rawSubscriptions]);
+      startDate: (s.startDate as any)?.toDate() ?? new Date(s.startDate),
+    }));
+
+    // If not mounted yet, return unsorted to avoid hydration mismatch
+    if (!isMounted) return subs;
+
+    // Sort by next payment date (closest first)
+    return [...subs].sort((a, b) => {
+      const nextA = calculateNextPaymentDate(a.startDate, a.frequency);
+      const nextB = calculateNextPaymentDate(b.startDate, b.frequency);
+      return nextA.getTime() - nextB.getTime();
+    });
+  }, [rawSubscriptions, isMounted]);
 
   const totalMonthlyCost = useMemo(() => {
     return subscriptions.reduce((acc, sub) => {
@@ -78,27 +107,12 @@ export function SubscriptionsPanel({ categories, formatCurrency }: Subscriptions
     deleteDocumentNonBlocking(subscriptionRef);
   };
 
-  const calculateNextPaymentDate = (startDate: Date, frequency: 'monthly' | 'yearly'): Date => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0); 
-    let nextDate = new Date(startDate.getTime());
-
-    while (nextDate < now) {
-        if (frequency === 'monthly') {
-            nextDate = addMonths(nextDate, 1);
-        } else { // yearly
-            nextDate = addYears(nextDate, 1);
-        }
-    }
-    return nextDate;
-  };
-
   return (
     <div className="w-full">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div className="space-y-1">
           <h2 className="text-2xl font-bold tracking-tight">Abonelikler</h2>
-          <p className="text-sm text-muted-foreground italic">Tüm düzenli ödemelerinizin takibi</p>
+          <p className="text-sm text-muted-foreground italic">Ödeme günü en yakın olanlar en üstte gösterilir</p>
         </div>
         
         <div className="flex items-center gap-4">
@@ -122,7 +136,7 @@ export function SubscriptionsPanel({ categories, formatCurrency }: Subscriptions
           {subscriptions.map((sub) => {
             const nextPaymentDate = isMounted ? calculateNextPaymentDate(sub.startDate, sub.frequency) : null;
             return (
-              <Card key={sub.id} className="flex flex-col border-l-4 border-l-primary">
+              <Card key={sub.id} className="flex flex-col border-l-4 border-l-primary hover:shadow-md transition-shadow">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span className="truncate">{sub.name}</span>
