@@ -6,6 +6,7 @@ import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Student, LessonLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { LinkIcon, Plus, Trash2, Users, Wallet, TrendingUp, BookUser, ChevronDown, Edit2, ArrowUp, ArrowDown, X } from 'lucide-react';
 import Link from 'next/link';
@@ -154,7 +155,7 @@ export function LessonTracker() {
       return;
     }
 
-    addDocumentNonBlocking(studentsCollectionRef, {
+    addDoc(studentsCollectionRef, {
       name,
       lessonPrice,
       balance,
@@ -238,16 +239,13 @@ export function LessonTracker() {
   const handleDeleteLessonLog = (log: LessonLog) => {
     if (!user) return;
     
-    // 1. Find the student to restore balance
     const student = students.find(s => s.id === log.studentId);
     if (student) {
       const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
       const newBalance = student.balance + log.lessonPrice;
       
-      // Update student balance (add back 1 lesson)
       updateDocumentNonBlocking(studentRef, { balance: newBalance });
 
-      // Add audit log for balance restoration
       const balanceLogsCollectionRef = collection(firestore, 'users', user.uid, 'students', student.id, 'balanceLogs');
       addDocumentNonBlocking(balanceLogsCollectionRef, {
           userId: user.uid,
@@ -260,7 +258,6 @@ export function LessonTracker() {
       });
     }
 
-    // 2. Delete the lesson log
     const logRef = doc(firestore, 'users', user.uid, 'lessonLogs', log.id);
     deleteDocumentNonBlocking(logRef);
 
