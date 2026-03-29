@@ -98,10 +98,21 @@ export function AddTransactionSheet({
 
     // Call onAddTransaction for each item in the batch
     values.items.forEach(item => {
-      onAddTransaction({
-        ...item,
+      // Firestore does not support 'undefined' values.
+      // We clean the data to remove undefined optional fields.
+      const transactionData: any = {
+        type: item.type,
+        amount: item.amount,
+        category: item.category,
+        description: item.description,
         date: finalDate,
-      });
+      };
+
+      if (item.subCategory && item.subCategory.trim() !== '') {
+        transactionData.subCategory = item.subCategory;
+      }
+
+      onAddTransaction(transactionData);
     });
 
     form.reset({
