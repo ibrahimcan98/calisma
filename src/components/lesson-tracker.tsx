@@ -155,7 +155,7 @@ export function LessonTracker() {
       return;
     }
 
-    addDoc(studentsCollectionRef, {
+    addDocumentNonBlocking(studentsCollectionRef, {
       name,
       lessonPrice,
       balance,
@@ -434,7 +434,7 @@ export function LessonTracker() {
                                   <p className="font-bold text-lg">{student.name}</p>
                                   {user && (
                                     <Link 
-                                      href={`/student/${user.uid}/${student.id}`} 
+                                      href={`/student/${user.uid}/${student.id}?mode=parent`} 
                                       target="_blank" 
                                       rel="noopener noreferrer" 
                                       onClick={(e) => e.stopPropagation()}
