@@ -120,10 +120,11 @@ export function LessonTracker() {
     return currentWeekLogs.reduce((sum, log) => sum + log.lessonPrice, 0);
   }, [lessonLogs, isMounted]);
   
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('de-DE', {
+  const formatCurrency = (amount: number, studentName?: string) => {
+    const isPound = studentName?.toLowerCase() === 'ata' || studentName?.toLowerCase() === 'mila';
+    return new Intl.NumberFormat(isPound ? 'en-GB' : 'de-DE', {
       style: 'currency',
-      currency: 'EUR',
+      currency: isPound ? 'GBP' : 'EUR',
     }).format(amount);
   };
   
@@ -443,7 +444,7 @@ export function LessonTracker() {
                                     </Link>
                                   )}
                               </div>
-                              <p className="text-sm text-muted-foreground">Ücret: {formatCurrency(student.lessonPrice)}</p>
+                              <p className="text-sm text-muted-foreground">Ücret: {formatCurrency(student.lessonPrice, student.name)}</p>
                           </div>
                           <div className="w-32 text-center mx-4">
                               <p className="text-sm text-muted-foreground">Durum</p>
@@ -574,7 +575,7 @@ export function LessonTracker() {
                                                   <span className="text-muted-foreground">{format(log.date, 'eeee, HH:mm', { locale: tr })}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                  <span className="font-medium">{formatCurrency(log.lessonPrice)}</span>
+                                                  <span className="font-medium">{formatCurrency(log.lessonPrice, log.studentName)}</span>
                                                   <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                       <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -625,7 +626,7 @@ export function LessonTracker() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Ders Ücreti (€)</label>
+              <label className="text-sm font-medium">Ders Ücreti</label>
               <Input 
                 type="number" 
                 value={editPrice} 

@@ -75,9 +75,10 @@ export function StudentDetailPage({ userId, studentId, isParentMode = false }: S
   }, [student, lessonLogs]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('de-DE', {
+    const isPound = student?.name.toLowerCase() === 'ata' || student?.name.toLowerCase() === 'mila';
+    return new Intl.NumberFormat(isPound ? 'en-GB' : 'de-DE', {
       style: 'currency',
-      currency: 'EUR',
+      currency: isPound ? 'GBP' : 'EUR',
     }).format(amount);
   };
 
@@ -231,7 +232,7 @@ export function StudentDetailPage({ userId, studentId, isParentMode = false }: S
                       <TableRow key={log.id}>
                         <TableCell className="font-medium">{lessonLogs.length - index}</TableCell>
                         <TableCell>{format(log.date, 'd MMMM yyyy, EEEE HH:mm', { locale: tr })}</TableCell>
-                        <TableCell className="text-right">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(log.lessonPrice)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(log.lessonPrice)}</TableCell>
                       </TableRow>
                     ))
                   ) : (

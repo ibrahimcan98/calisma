@@ -14,9 +14,12 @@ export async function POST(req: Request) {
       });
     } else if (amount && lessonCount) {
       // Dynamic price calculation
+      const isPound = studentName?.toLowerCase() === 'ata' || studentName?.toLowerCase() === 'mila';
+      const currencyCode = isPound ? 'gbp' : 'eur';
+
       line_items.push({
         price_data: {
-          currency: 'eur',
+          currency: currencyCode,
           product_data: {
             name: `${studentName} - ${lessonCount} Ders Paketi`,
             description: `${lessonCount} adet ders yüklemesi`,
