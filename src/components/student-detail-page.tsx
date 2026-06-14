@@ -152,8 +152,8 @@ export function StudentDetailPage({ userId, studentId, isParentMode = false }: S
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[4, 8, 12, 15].map((count) => (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {[3, 4, 8, 12, 15].map((count) => (
                 <Button 
                   key={count} 
                   variant="outline" 
