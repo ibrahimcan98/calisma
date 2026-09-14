@@ -6,9 +6,9 @@ import { Student } from '@/lib/types';
 export function ProfileCard({ student }: { student: Student }) {
   const avatars = [
     student.avatar,
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Mia',
+    'https://api.dicebear.com/7.x/lorelei/svg?seed=Felix&backgroundColor=e8f1ec',
+    'https://api.dicebear.com/7.x/lorelei/svg?seed=Aneka&backgroundColor=fff5f2',
+    'https://api.dicebear.com/7.x/lorelei/svg?seed=Mia&backgroundColor=fdfaf6',
   ];
 
   return (

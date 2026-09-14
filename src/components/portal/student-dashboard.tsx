@@ -28,7 +28,7 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
         setStudent({
           id: 'dummy', userId: 'dummy', name: 'Ada', preferredName: 'Ada', 
           themeColor: '#6b8e7c', backgroundTheme: 'doğa', balance: 0, lessonPrice: 0, createdAt: new Date(),
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ada'
+          avatar: 'https://api.dicebear.com/7.x/lorelei/svg?seed=Ada&backgroundColor=e8f1ec'
         });
         setLoading(false);
         return;
@@ -43,7 +43,7 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
           setStudent({
             ...data,
             id: doc.id,
-            avatar: data.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`,
+            avatar: data.avatar || `https://api.dicebear.com/7.x/lorelei/svg?seed=${data.name}&backgroundColor=e8f1ec`,
             themeColor: data.themeColor || '#6b8e7c',
             preferredName: data.preferredName || data.name
           });
