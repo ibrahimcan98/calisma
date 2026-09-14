@@ -222,7 +222,9 @@ export function AdminDashboard() {
              <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#eef3f0] relative">
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="absolute top-4 right-4 text-slate-500 rounded-xl">PIN Belirle</Button>
+                    <Button variant="outline" size="sm" className="absolute top-4 right-4 text-slate-500 rounded-xl">
+                      {selectedStudent.pin ? `PIN: ${selectedStudent.pin}` : 'PIN Belirle'}
+                    </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-xs rounded-3xl">
                     <DialogHeader>
