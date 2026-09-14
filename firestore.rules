@@ -61,7 +61,7 @@ service cloud.firestore {
       }
 
       match /students/{studentId} {
-        allow get, list: if true; // Public access for reports
+        allow get, list: if true; // Public access for reports & login
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
         allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
         allow delete: if isExistingOwner(userId);
@@ -70,6 +70,26 @@ service cloud.firestore {
           allow get, list: if true;
           allow create: if isOwner(userId);
           allow delete: if isOwner(userId);
+        }
+        
+        match /messages/{messageId} {
+          allow get, list: if true;
+          allow create, update, delete: if isOwner(userId);
+        }
+        
+        match /checkIns/{checkInId} {
+          allow get, list: if true;
+          allow create, update, delete: if true; // Students can create check-ins
+        }
+        
+        match /achievements/{achvId} {
+          allow get, list: if true;
+          allow create, update, delete: if isOwner(userId);
+        }
+        
+        match /vocabularies/{vocabId} {
+          allow get, list: if true;
+          allow create, update, delete: if isOwner(userId);
         }
       }
 
@@ -109,6 +129,11 @@ service cloud.firestore {
 
     match /{document=**} {
       allow read, write: if false;
+    }
+
+    // Allow collectionGroup query for students PIN login
+    match /{path=**}/students/{studentId} {
+      allow read: if true; 
     }
   }
 }
