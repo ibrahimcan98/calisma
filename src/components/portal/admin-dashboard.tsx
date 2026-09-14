@@ -66,13 +66,16 @@ export function AdminDashboard() {
     return students[0];
   }, [students, selectedStudentId]);
 
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const handleUpdatePin = async () => {
     if (!user || !selectedStudent || !editingPin) return;
     try {
       const studentRef = doc(firestore, 'users', user.uid, 'students', selectedStudent.id);
       await updateDoc(studentRef, { pin: editingPin });
       setEditingPin('');
-      alert('PIN başarıyla güncellendi!');
+      setIsDialogOpen(false);
+      // Removed alert for better UX
     } catch (e) {
       console.error(e);
       alert('PIN güncellenirken hata oluştu.');
@@ -220,9 +223,9 @@ export function AdminDashboard() {
                <>
              {/* Profile Header */}
              <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#eef3f0] relative">
-                <Dialog>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="absolute top-4 right-4 text-slate-500 rounded-xl">
+                    <Button variant="outline" size="sm" className="absolute top-4 right-4 text-slate-500 rounded-xl font-medium border-[#eef3f0]">
                       {selectedStudent.pin ? `PIN: ${selectedStudent.pin}` : 'PIN Belirle'}
                     </Button>
                   </DialogTrigger>
@@ -238,7 +241,7 @@ export function AdminDashboard() {
                         onChange={e => setEditingPin(e.target.value.replace(/\D/g, ''))}
                         className="text-center text-2xl tracking-[0.5em] h-14"
                       />
-                      <Button onClick={handleUpdatePin} className="bg-[#6b8e7c] text-white rounded-xl">Kaydet</Button>
+                      <Button onClick={handleUpdatePin} className="bg-[#6b8e7c] text-white rounded-xl h-12">Kaydet</Button>
                       <p className="text-xs text-slate-500 text-center">Mevcut PIN: {selectedStudent.pin || 'Yok'}</p>
                     </div>
                   </DialogContent>
