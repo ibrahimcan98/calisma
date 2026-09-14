@@ -69,9 +69,13 @@ export default function PortalPage() {
   }
 
   // 1. If Tuba (Admin) is logged in via Firebase Auth
-  if (user) {
+  if (user && user.email === 'tubakodak8@gmail.com') {
     return <AdminDashboard />;
   }
+
+  // If someone else is logged in (not Tuba), we can either force sign out or just not show the admin dashboard.
+  // Actually, we should just let them see the login screen (or sign them out).
+  // For safety, if user exists but is NOT Tuba, we just show the login screen (they can log in as a student).
 
   // 2. If Student is logged in via PIN
   if (studentToken) {

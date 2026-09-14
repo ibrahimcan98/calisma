@@ -1,6 +1,6 @@
 'use client';
 
-import { Wallet, User, LogOut, LayoutDashboard, BookOpen, Calendar, UserCircle } from 'lucide-react';
+import { Wallet, User, LogOut, LayoutDashboard, BookOpen, Calendar, UserCircle, GraduationCap } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useUser, useAuth } from '@/firebase';
 import Link from 'next/link';
@@ -25,6 +25,7 @@ export function Header() {
     { href: '/lessons', label: 'Ders Takibi', icon: BookOpen },
     { href: '/planning', label: 'Çalışma & Planlama', icon: Calendar },
     { href: '/profile', label: 'Profil', icon: UserCircle },
+    { href: '/portal', label: 'Portal (Öğrenci)', icon: GraduationCap },
   ];
 
   return (

@@ -160,7 +160,8 @@ export function AdminDashboard() {
           </div>
         </header>
 
-        {/* 3-Column Layout */}
+        {/* Conditional Content based on activeTab */}
+        {activeTab === 'Ana Sayfa' || activeTab === 'Öğrencilerim' ? (
         <main className="flex-1 overflow-hidden flex">
           
           {/* COLUMN 1: Student List */}
@@ -453,6 +454,17 @@ export function AdminDashboard() {
 
           </div>
         </main>
+        ) : (
+          <main className="flex-1 overflow-hidden flex items-center justify-center bg-[#fcfbf9]">
+            <div className="text-center">
+              <div className="text-6xl mb-4 opacity-50">🚧</div>
+              <h3 className="text-xl font-bold text-[#2d4a3e]">{activeTab} Modülü</h3>
+              <p className="text-sm text-slate-500 mt-2 max-w-sm mx-auto">
+                Bu modül henüz yapım aşamasında. Çok yakında burada yeni özellikler göreceksiniz! 🌿
+              </p>
+            </div>
+          </main>
+        )}
       </div>
     </div>
   );
