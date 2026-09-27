@@ -119,14 +119,25 @@ export function saveBridgedMessage(teacherId: string, message: Message) {
 
 export function readBridgedMessages(teacherId: string, studentId: string): Message[] {
   return readJson<StoredMessage[]>(MESSAGE_KEY, [])
-    .filter((item) => {
-      if (!item) return false;
-      if (item.studentId === studentId) return true;
-      if (item.studentId === 'dummy' || item.studentId === '1234') return true;
-      if (teacherId && (item.teacherId === teacherId || item.teacherId === 'dummy')) return true;
-      return true;
-    })
+    .filter((item) => Boolean(item && item.teacherId === teacherId && item.studentId === studentId))
     .map(({ teacherId: _teacherId, ...message }) => ({ ...message, date: new Date(message.date) }));
+}
+
+export function clearBridgedMessages(teacherId: string, studentId: string, includeLegacy = false) {
+  const messages = readJson<StoredMessage[]>(MESSAGE_KEY, []);
+  writeJson(MESSAGE_KEY, messages.filter((item) => {
+    const isSelectedStudent = item.teacherId === teacherId && item.studentId === studentId;
+    const isLegacyMessage = includeLegacy && (item.teacherId === 'dummy' || item.studentId === 'dummy' || item.studentId === '1234');
+    return !isSelectedStudent && !isLegacyMessage;
+  }));
+
+  const reactions = readJson<StoredReaction[]>(REACTION_KEY, []);
+  writeJson(REACTION_KEY, reactions.filter((item) => {
+    const isSelectedStudent = item.teacherId === teacherId && item.studentId === studentId;
+    const isLegacyReaction = includeLegacy && (item.teacherId === 'dummy' || item.studentId === 'dummy' || item.studentId === '1234');
+    return !isSelectedStudent && !isLegacyReaction;
+  }));
+  notifyBridge({ type: 'messages-cleared', studentId });
 }
 
 export function saveBridgedReaction(

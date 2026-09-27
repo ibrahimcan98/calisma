@@ -16,7 +16,6 @@ export function NextLessonCard({ lesson, timeZone }: { lesson: LessonLog | null;
   }
 
   const date = normalizeLessonDate(lesson.date);
-  const endDate = new Date(date.getTime() + 60 * 60 * 1000);
 
   return (
     <div className="flex min-h-full w-full flex-col justify-between gap-5 rounded-3xl border border-[#d3e3d9] bg-[#eaf3ed] p-6 shadow-sm">
@@ -33,7 +32,7 @@ export function NextLessonCard({ lesson, timeZone }: { lesson: LessonLog | null;
           </div>
           <div className="flex items-center gap-3 rounded-2xl border border-[#d3e3d9] bg-white p-4 shadow-sm">
             <Clock className="h-5 w-5 shrink-0 text-[#6b8e7c]" />
-            <div><p className="text-sm font-bold text-[#2d4a3e]">{date.toLocaleTimeString('tr-TR', { timeZone, hour: '2-digit', minute: '2-digit' })} - {endDate.toLocaleTimeString('tr-TR', { timeZone, hour: '2-digit', minute: '2-digit' })}</p><p className="text-xs font-medium text-slate-500">{timeZoneLabel(timeZone)} yerel saati</p></div>
+            <div><p className="text-sm font-bold text-[#2d4a3e]">{date.toLocaleTimeString('tr-TR', { timeZone, hour: '2-digit', minute: '2-digit' })}</p><p className="text-xs font-medium text-slate-500">{timeZoneLabel(timeZone)} yerel saati</p></div>
           </div>
         </div>
       </div>

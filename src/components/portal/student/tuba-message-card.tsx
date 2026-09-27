@@ -137,18 +137,15 @@ export function TubaMessageCard({ student, studentRoot }: { student: Student; st
     );
   }, [messages, student.portalMessages, bridgedMessages, bridgedReactions]);
 
-  // If no teacher messages are available, provide default fallback
-  const displayMessages = useMemo(() => {
+  const displayMessages = useMemo<Message[]>(() => {
     if (allTeacherMessages.length > 0) return allTeacherMessages;
     return [
       {
-        id: 'default-welcome-message',
+        id: 'empty-teacher-message',
         studentId: student.id,
-        senderRole: 'admin' as const,
-        content:
-          'Geçen dersteki konuşma pratiğinde gösterdiğin özgüven beni çok mutlu etti. Türkçe ile kurduğun bağ her geçen gün daha da güçleniyor. Aynı merak ve enerjiyle devam et. Seninle bu yolculuk gerçekten çok keyifli!',
+        senderRole: 'admin',
+        content: '',
         date: new Date(),
-        emojiReaction: undefined,
       },
     ];
   }, [allTeacherMessages, student.id]);
@@ -161,6 +158,7 @@ export function TubaMessageCard({ student, studentRoot }: { student: Student; st
       : totalMessages - 1;
 
   const currentMessage = displayMessages[currentIndex];
+
   const isLatest = currentIndex === totalMessages - 1;
   const hasPrevious = currentIndex > 0;
   const hasNext = currentIndex < totalMessages - 1;
@@ -214,7 +212,7 @@ export function TubaMessageCard({ student, studentRoot }: { student: Student; st
   ];
 
   const saveReaction = async (emojiReaction: string) => {
-    if (!studentRoot || !currentMessage) {
+    if (!studentRoot || !currentMessage || currentMessage.id === 'empty-teacher-message') {
       return;
     }
     setLocalReactions((prev) => ({
@@ -313,7 +311,7 @@ export function TubaMessageCard({ student, studentRoot }: { student: Student; st
 
         <div key={currentMessage?.id || currentIndex} className="text-[#6b503b] text-sm leading-relaxed mb-3 animate-in fade-in duration-200">
           <p className="font-semibold mb-2">Merhaba {student.preferredName || student.name}!</p>
-          <p className="whitespace-pre-line">{currentMessage?.content}</p>
+          {currentMessage?.content && <p className="whitespace-pre-line">{currentMessage.content}</p>}
           <p className="mt-3 font-semibold">Tuba 💛</p>
         </div>
       </div>

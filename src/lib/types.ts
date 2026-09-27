@@ -71,6 +71,8 @@ export type Student = {
   improvementGoal?: string;
   noteForTuba?: string;
   nextLessonRequest?: string;
+  pendingTeacherUpdates?: number;
+  lastStudentUpdate?: string;
   portalMessages?: Message[];
   portalAchievements?: Achievement[];
   homeworks?: Homework[];

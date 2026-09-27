@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Student } from '@/lib/types';
 import { useFirestore } from '@/firebase';
-import { doc, updateDoc, setDoc, type DocumentData } from 'firebase/firestore';
+import { doc, increment, updateDoc, setDoc, type DocumentData } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
@@ -213,7 +213,11 @@ export function ProfileCard({
       if (studentRoot && studentRoot.userId && studentRoot.userId !== 'dummy') {
         // Direct document update
         try {
-          await updateDoc(doc(firestore, 'users', studentRoot.userId, 'students', studentRoot.studentId), sanitized);
+          await updateDoc(doc(firestore, 'users', studentRoot.userId, 'students', studentRoot.studentId), {
+            ...sanitized,
+            pendingTeacherUpdates: increment(1),
+            lastStudentUpdate: 'Profil bilgilerini değiştirdi',
+          });
         } catch (e) {
           console.warn('Direct student document update failed, syncing via checkIns channel:', e);
         }

@@ -37,7 +37,7 @@ export function Header() {
               <Wallet className="h-6 w-6 text-primary-foreground" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-foreground hidden sm:block">
-              Onder Family
+              Tuba&apos;s Classroom
             </h1>
           </Link>
 

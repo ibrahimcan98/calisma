@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Target, MessageCircle, Book, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, limit, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, increment, limit, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import type { Vocabulary } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 import { saveBridgedMessage } from '@/lib/student-message-bridge';
@@ -24,7 +24,15 @@ export function NextLessonPoll({ studentRoot }: { studentRoot: StudentRoot }) {
     setSelected(choice);
     if (!studentRoot) return;
     const studentRef = doc(firestore, 'users', studentRoot.userId, 'students', studentRoot.studentId);
-    await updateDoc(studentRef, { nextLessonRequest: choice });
+    await updateDoc(studentRef, { nextLessonRequest: choice, pendingTeacherUpdates: increment(1), lastStudentUpdate: 'Gelecek ders seçimini değiştirdi' }).catch((error) => {
+      console.warn('Ders isteği ana öğrenci kaydına yazılamadı; senkron belgesi kullanılacak.', error);
+    });
+    await setDoc(doc(firestore, 'users', studentRoot.userId, 'students', studentRoot.studentId, 'checkIns', 'profile_sync'), {
+      type: 'profile_sync',
+      studentId: studentRoot.studentId,
+      nextLessonRequest: choice,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
     toast({ title: 'Seçimin kaydedildi', description: 'Tuba öğretmenin bunu kendi panelinde görebilecek.' });
   };
 
@@ -54,7 +62,7 @@ export function NextLessonPoll({ studentRoot }: { studentRoot: StudentRoot }) {
 
 export function NoteToTuba({ studentRoot }: { studentRoot: StudentRoot }) {
   const firestore = useFirestore();
-  const [note, setNote] = useState('Türk dizilerindeki günlük konuşma ifadelerini öğrenmek istiyorum. 😊');
+  const [note, setNote] = useState('');
 
   const sendNote = async () => {
     if (!studentRoot || !note.trim()) return;
@@ -81,6 +89,10 @@ export function NoteToTuba({ studentRoot }: { studentRoot: StudentRoot }) {
         type: 'general',
         isRead: false,
       });
+      await updateDoc(doc(firestore, 'users', studentRoot.userId, 'students', studentRoot.studentId), {
+        pendingTeacherUpdates: increment(1),
+        lastStudentUpdate: 'Tuba’ya yeni bir not gönderdi',
+      });
       toast({ title: 'Notun Tuba öğretmenine gitti' });
     } catch (error) {
       console.warn('Bulut mesajı yazılamadı; öğretmen paneli yerel köprüden okuyacak.', error);
@@ -104,12 +116,12 @@ export function NoteToTuba({ studentRoot }: { studentRoot: StudentRoot }) {
           onChange={(event) => setNote(event.target.value)}
         />
       </div>
-      <Button onClick={sendNote} className="w-full bg-[#6b8e7c] hover:bg-[#588157] text-white rounded-xl h-8 text-xs">Gönder</Button>
+      <Button onClick={sendNote} disabled={!note.trim()} className="w-full bg-[#6b8e7c] hover:bg-[#588157] text-white rounded-xl h-8 text-xs disabled:cursor-not-allowed disabled:opacity-40">Gönder</Button>
     </div>
   );
 }
 
-export function VocabularyWidget({ studentRoot }: { studentRoot: StudentRoot }) {
+export function VocabularyWidget({ studentRoot, onShowAll }: { studentRoot: StudentRoot; onShowAll: () => void }) {
   const firestore = useFirestore();
   const vocabularyRef = useMemoFirebase(() => {
     if (!studentRoot) return null;
@@ -121,17 +133,7 @@ export function VocabularyWidget({ studentRoot }: { studentRoot: StudentRoot }) 
   }, [firestore, studentRoot?.userId, studentRoot?.studentId]);
   const { data } = useCollection<Omit<Vocabulary, 'id'>>(vocabularyRef);
 
-  const fallbackWords = [
-    { tr: 'rutin', en: 'daily routine' },
-    { tr: 'keşfetmek', en: 'to discover' },
-    { tr: 'özgüven', en: 'self-confidence' },
-    { tr: 'alışveriş', en: 'shopping' },
-    { tr: 'manzara', en: 'scenery' },
-  ];
-  const words = useMemo(() => {
-    if (!data?.length) return fallbackWords;
-    return data.map((item) => ({ tr: item.word, en: item.meaning }));
-  }, [data]);
+  const words = (data || []).map((item) => ({ tr: item.word, en: item.meaning }));
 
   return (
     <div className="bg-[#f3f8f5] rounded-3xl p-5 shadow-sm border border-[#eef3f0] h-full flex flex-col justify-between">
@@ -141,8 +143,6 @@ export function VocabularyWidget({ studentRoot }: { studentRoot: StudentRoot }) 
             <Book className="h-4 w-4 text-[#588157]" /> Kelimelerim
           </h3>
         </div>
-        <p className="text-[10px] text-[#588157] font-medium mb-3">Kaydettiğin {data?.length || 24} kelime</p>
-        
         <div className="space-y-2">
           {words.map((w, i) => (
             <div key={i} className="flex justify-between items-center">
@@ -153,7 +153,7 @@ export function VocabularyWidget({ studentRoot }: { studentRoot: StudentRoot }) 
         </div>
       </div>
       
-      <Button variant="link" onClick={() => toast({ title: 'Kelimeler bölümü açılıyor', description: 'Sol menüde Kelimelerim alanına bağlandı.' })} className="text-[#6b8e7c] text-[10px] h-auto p-0 mt-4 self-end">
+      <Button variant="link" onClick={onShowAll} className="text-[#6b8e7c] text-[10px] h-auto p-0 mt-4 self-end">
         Tüm kelimelerimi gör <ArrowRight className="h-3 w-3 ml-1" />
       </Button>
     </div>

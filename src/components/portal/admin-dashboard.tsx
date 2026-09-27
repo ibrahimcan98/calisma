@@ -10,12 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth, useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { addDoc, arrayUnion, collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
-import type { Achievement, CheckIn, Homework, LessonLog, Message, Student } from '@/lib/types';
+import { addDoc, arrayUnion, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import type { Achievement, CheckIn, Homework, LessonLog, Message, Student, Vocabulary } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { firebaseConfig } from '@/firebase/config';
 import { 
   readBridgedCheckIns, 
+  clearBridgedMessages,
   readBridgedMessages, 
   readBridgedReactions, 
   saveBridgedMessage, 
@@ -172,6 +173,7 @@ export function AdminDashboard() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [messageError, setMessageError] = useState('');
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [isLessonOpen, setIsLessonOpen] = useState(false);
   const [lessonToDelete, setLessonToDelete] = useState<(LessonLog & { id: string }) | null>(null);
   const [newLesson, setNewLesson] = useState({ studentId: '', date: '', time: '' });
@@ -194,6 +196,8 @@ export function AdminDashboard() {
     progress: 25,
   });
   const [achievementError, setAchievementError] = useState('');
+  const [isVocabularyOpen, setIsVocabularyOpen] = useState(false);
+  const [vocabularyDraft, setVocabularyDraft] = useState({ word: '', meaning: '', tubaExample: '' });
   const [isHomeworkOpen, setIsHomeworkOpen] = useState(false);
   const [homeworkFilterId, setHomeworkFilterId] = useState('all');
   const [newHomework, setNewHomework] = useState({ studentId: '', title: '', description: '', dueDate: '' });
@@ -206,12 +210,13 @@ export function AdminDashboard() {
   });
   const [bridgeRevision, setBridgeRevision] = useState(0);
   const [remoteProfileSyncs, setRemoteProfileSyncs] = useState<Record<string, StudentProfileSync>>({});
+  const [isResettingPortalData, setIsResettingPortalData] = useState(false);
 
   const menuItems = [
     { name: 'Ana Sayfa', icon: Home },
     { name: 'Ders Takvimi', icon: CalendarDays },
     { name: 'Ödevler', icon: BookOpen },
-    { name: 'Mesajlar', icon: MessageSquare, badge: 2 },
+    { name: 'Mesajlar', icon: MessageSquare },
     { name: 'Ayarlar', icon: Settings },
   ];
 
@@ -222,6 +227,11 @@ export function AdminDashboard() {
   }, [firestore, user]);
   
   const { data: rawStudents } = useCollection<Omit<Student, 'id'>>(studentsCollectionRef);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!user || !rawStudents?.length) {
@@ -301,8 +311,8 @@ export function AdminDashboard() {
       const activeImprovementGoal = remoteProfile.improvementGoal || bridged.improvementGoal || s.improvementGoal || cached.improvementGoal || '';
 
       return {
-        ...s,
         ...cached,
+        ...s,
         ...bridged,
         ...remoteProfile,
         avatar: activeAvatar,
@@ -316,6 +326,7 @@ export function AdminDashboard() {
         petName: activePetName,
         backgroundTheme: activeBackgroundTheme,
         improvementGoal: activeImprovementGoal,
+        nextLessonRequest: remoteProfile.nextLessonRequest || s.nextLessonRequest || bridged.nextLessonRequest || cached.nextLessonRequest || '',
         flag: activeCountry === 'Almanya' ? '🇩🇪' : activeCountry === 'Hollanda' ? '🇳🇱' : activeCountry === 'ABD' ? '🇺🇸' : '🇹🇷',
         color: s.themeColor || '#6b8e7c',
         nextLesson: 'Planlanmadı',
@@ -462,8 +473,9 @@ export function AdminDashboard() {
       }
 
       studentCache.push({
-        ...student,
         ...cached,
+        ...student,
+        nextLessonRequest: student.nextLessonRequest || cached?.nextLessonRequest || '',
         avatar: chosenAvatar,
         id: student.id,
         userId: user.uid,
@@ -546,7 +558,7 @@ export function AdminDashboard() {
     return query(
       collection(firestore, 'users', user.uid, 'students', selectedStudent.id, 'checkIns'),
       orderBy('date', 'desc'),
-      limit(1)
+      limit(20)
     );
   }, [firestore, user, selectedStudent?.id]);
 
@@ -555,9 +567,20 @@ export function AdminDashboard() {
     return collection(firestore, 'users', user.uid, 'students', selectedStudent.id, 'achievements');
   }, [firestore, user, selectedStudent?.id]);
 
+  const selectedVocabularyRef = useMemoFirebase(() => {
+    if (!user || !selectedStudent) return null;
+    return query(
+      collection(firestore, 'users', user.uid, 'students', selectedStudent.id, 'vocabulary'),
+      orderBy('word'),
+      limit(5)
+    );
+  }, [firestore, user, selectedStudent?.id]);
+
   const { data: selectedMessages } = useCollection<Omit<Message, 'id'>>(selectedMessagesRef);
   const { data: selectedCheckIns } = useCollection<Omit<CheckIn, 'id'>>(selectedCheckInsRef);
   const { data: selectedAchievements } = useCollection<Omit<Achievement, 'id'>>(selectedAchievementsRef);
+  const { data: selectedVocabulary } = useCollection<Omit<Vocabulary, 'id'>>(selectedVocabularyRef);
+  const unreadMoodUpdates = (selectedCheckIns || []).filter((checkIn) => Boolean(checkIn.mood) && checkIn.isRead !== true);
   const displayAchievements = useMemo(() => {
     const achievements = [...(selectedAchievements || []), ...(selectedStudent?.portalAchievements || [])];
     return achievements.filter((achievement, index, list) => list.findIndex((item) => item.id === achievement.id) === index);
@@ -567,6 +590,7 @@ export function AdminDashboard() {
     const isLegacyLeoTest = selectedStudent?.pin === '1234' || selectedStudent?.name.trim().toLocaleLowerCase('tr-TR') === 'leo';
     const legacyTestCheckIns = isLegacyLeoTest ? readBridgedCheckIns('dummy', 'dummy') : [];
     return [...(selectedCheckIns || []), ...bridgedCheckIns, ...legacyTestCheckIns]
+      .filter((checkIn) => Boolean(checkIn.mood && typeof checkIn.note === 'string'))
       .filter((checkIn, index, list) => list.findIndex((item) => item.id === checkIn.id) === index)
       .sort((a, b) => toDate(b.date).getTime() - toDate(a.date).getTime())[0];
   }, [bridgeRevision, selectedCheckIns, selectedStudent?.id, selectedStudent?.pin, user]);
@@ -669,9 +693,9 @@ export function AdminDashboard() {
   }, [calendarMonth, visibleLessonLogs]);
 
   const upcomingLessons = useMemo(() => visibleLessonLogs
-    .filter((lesson) => lesson.status !== 'cancelled' && lesson.date >= startOfToday())
+    .filter((lesson) => lesson.status !== 'cancelled' && lesson.status !== 'completed' && lesson.date.getTime() > currentTime)
     .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .slice(0, 8), [visibleLessonLogs]);
+    .slice(0, 8), [currentTime, visibleLessonLogs]);
 
   const allHomeworks = useMemo(() => allStudents.flatMap((student) => (
     (student.homeworks || []).map((homework) => ({ ...homework, student }))
@@ -952,6 +976,30 @@ export function AdminDashboard() {
     }
   };
 
+  const handleAddVocabulary = async () => {
+    if (!user || !selectedStudent || !vocabularyDraft.word.trim() || !vocabularyDraft.meaning.trim()) return;
+    await addDoc(collection(firestore, 'users', user.uid, 'students', selectedStudent.id, 'vocabulary'), {
+      studentId: selectedStudent.id,
+      word: vocabularyDraft.word.trim(),
+      meaning: vocabularyDraft.meaning.trim(),
+      tubaExample: vocabularyDraft.tubaExample.trim(),
+      studentExample: '',
+      isLearned: false,
+      createdAt: serverTimestamp(),
+    });
+    setVocabularyDraft({ word: '', meaning: '', tubaExample: '' });
+    setIsVocabularyOpen(false);
+    toast({ title: 'Kelime eklendi', description: `${selectedStudent.name}, kelimeyi kendi “Kelimelerim” bölümünde görebilir.` });
+  };
+
+  const handleDeleteVocabulary = async (vocabulary: Vocabulary) => {
+    if (!user || !selectedStudent) return;
+    const confirmed = window.confirm(`“${vocabulary.word}” kelimesi silinsin mi?`);
+    if (!confirmed) return;
+    await deleteDoc(doc(firestore, 'users', user.uid, 'students', selectedStudent.id, 'vocabulary', vocabulary.id));
+    toast({ title: 'Kelime silindi', description: 'Öğrencinin Kelimelerim listesinden de kaldırıldı.' });
+  };
+
   const handleAddHomework = async () => {
     if (!user || !newHomework.studentId || !newHomework.title.trim()) return;
     const homework: Homework = {
@@ -1070,6 +1118,106 @@ export function AdminDashboard() {
     });
   };
 
+  const handleSelectStudent = (student: Student) => {
+    setSelectedStudentId(student.id);
+    if (!user || !student.pendingTeacherUpdates) return;
+    void updateDoc(doc(firestore, 'users', user.uid, 'students', student.id), {
+      pendingTeacherUpdates: 0,
+    }).catch((error) => console.warn('Öğrenci bildirimi sıfırlanamadı.', error));
+  };
+
+  const handleResetStudentPortalData = async () => {
+    if (!user || !rawStudents?.length || isResettingPortalData) return;
+    const confirmed = window.confirm(
+      'PIN’ler, profil yazıları, mesajlar, duygu paylaşımları, kazanımlar, kelimeler, notlar ve bildirimler kalıcı olarak silinecek. Ders ücretleri, bakiyeler, planlanan ve işlenmiş dersler korunacak. Devam edilsin mi?'
+    );
+    if (!confirmed) return;
+
+    setIsResettingPortalData(true);
+    try {
+      const subcollections = ['messages', 'checkIns', 'achievements', 'vocabulary', 'vocabularies'];
+      for (const student of rawStudents) {
+        const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
+        const snapshots = await Promise.all(subcollections.map((name) => getDocs(collection(studentRef, name))));
+        await Promise.all(snapshots.flatMap((snapshot) => snapshot.docs.map((entry) => deleteDoc(entry.ref))));
+        await updateDoc(studentRef, {
+          pin: '',
+          preferredName: '',
+          country: '',
+          birthDate: null,
+          languages: [],
+          interests: [],
+          favoriteMusic: '',
+          favoriteMovies: '',
+          favoriteBooks: '',
+          favoriteGames: '',
+          favoriteThings: '',
+          hasPet: false,
+          petName: '',
+          improvementGoal: '',
+          noteForTuba: '',
+          nextLessonRequest: '',
+          strengths: [],
+          areasToImprove: [],
+          privateNotes: '',
+          portalMessages: [],
+          portalAchievements: [],
+          pendingTeacherUpdates: 0,
+          lastStudentUpdate: '',
+        });
+      }
+
+      [
+        'student_portal_pin_cache',
+        'student_portal_students_cache',
+        'student_portal_message_bridge_v1',
+        'student_portal_reaction_bridge_v1',
+        'student_portal_check_in_bridge_v1',
+        'student_portal_profile_bridge_v2',
+        'student_portal_token',
+      ].forEach((key) => localStorage.removeItem(key));
+      setRemoteProfileSyncs({});
+      setBridgeRevision((value) => value + 1);
+      toast({ title: 'Öğrenci portalı temizlendi', description: 'Ders ücretleri, bakiyeler ve tüm ders kayıtları korundu.' });
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Temizleme tamamlanamadı', description: 'Bazı kayıtlar silinemedi. Lütfen tekrar deneyin.', variant: 'destructive' });
+    } finally {
+      setIsResettingPortalData(false);
+    }
+  };
+
+  const handleReadMoodUpdates = () => {
+    if (!user || !selectedStudent || !unreadMoodUpdates.length) return;
+    void Promise.all(unreadMoodUpdates.map((checkIn) => updateDoc(
+      doc(firestore, 'users', user.uid, 'students', selectedStudent.id, 'checkIns', checkIn.id),
+      { isRead: true }
+    ))).catch((error) => console.warn('Duygu bildirimi sıfırlanamadı.', error));
+  };
+
+  const handleClearSelectedMessages = async () => {
+    if (!user || !selectedStudent) return;
+    const confirmed = window.confirm(`${selectedStudent.name} için gönderilen ve alınan tüm mesajlar kalıcı olarak silinsin mi?`);
+    if (!confirmed) return;
+
+    try {
+      const messagesSnapshot = await getDocs(collection(firestore, 'users', user.uid, 'students', selectedStudent.id, 'messages'));
+      await Promise.all(messagesSnapshot.docs.map((message) => deleteDoc(message.ref)));
+      await updateDoc(doc(firestore, 'users', user.uid, 'students', selectedStudent.id), {
+        portalMessages: [],
+        pendingTeacherUpdates: 0,
+        lastStudentUpdate: '',
+      });
+      const isLeo = selectedStudent.name.trim().toLocaleLowerCase('tr-TR') === 'leo' || selectedStudent.pin === '1234';
+      clearBridgedMessages(user.uid, selectedStudent.id, isLeo);
+      setBridgeRevision((value) => value + 1);
+      toast({ title: `${selectedStudent.name} mesajları temizlendi` });
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Mesajlar silinemedi', description: 'Lütfen tekrar deneyin.', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-[#fcfbf9] font-sans text-slate-800 xl:h-screen xl:flex-row xl:overflow-hidden">
       
@@ -1099,11 +1247,6 @@ export function AdminDashboard() {
                   <item.icon className={`h-4 w-4 ${activeTab === item.name ? 'text-[#6b8e7c]' : 'text-slate-400'}`} />
                   <span className="text-sm">{item.name}</span>
                 </div>
-                {item.badge && (
-                  <span className="bg-[#e89b7b] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                    {item.badge}
-                  </span>
-                )}
               </button>
             ))}
           </nav>
@@ -1245,7 +1388,7 @@ export function AdminDashboard() {
               {students.map((s, idx) => (
                 <div 
                   key={s.id} 
-                  onClick={() => setSelectedStudentId(s.id)}
+                  onClick={() => handleSelectStudent(s)}
                   className={`group flex min-w-[210px] cursor-pointer items-center justify-between rounded-2xl border-2 p-3 transition-all xl:min-w-0 ${s.id === selectedStudent?.id ? 'border-[#6b8e7c] bg-[#eef3f0]/50' : 'border-transparent hover:border-slate-100'}`}
                 >
                   <div className="flex items-center gap-3">
@@ -1254,10 +1397,17 @@ export function AdminDashboard() {
                         <AvatarImage key={s.avatar} src={s.avatar} />
                         <AvatarFallback>{s.name[0]}</AvatarFallback>
                       </Avatar>
+                      {!!s.pendingTeacherUpdates && (
+                        <span title={s.lastStudentUpdate || 'Öğrenci bir değişiklik yaptı'} className="absolute -right-2 -top-2 flex min-w-6 items-center justify-center rounded-full border-2 border-white bg-[#e85d5d] px-1.5 py-0.5 text-[10px] font-black text-white shadow-sm">
+                          +{s.pendingTeacherUpdates}
+                        </span>
+                      )}
                     </div>
                     <div>
                       <h4 className="font-bold text-[#2d4a3e]">{s.name}</h4>
-                      <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">Sonraki: {s.nextLesson}</p>
+                      <p className={`mt-1 line-clamp-1 text-[10px] ${s.pendingTeacherUpdates ? 'font-semibold text-[#e85d5d]' : 'text-slate-400'}`}>
+                        {s.pendingTeacherUpdates ? s.lastStudentUpdate || 'Yeni bir değişiklik yaptı' : `Sonraki: ${s.nextLesson}`}
+                      </p>
                     </div>
                   </div>
                   <ChevronRight className={`h-4 w-4 ${s.id === selectedStudent?.id ? 'text-[#6b8e7c]' : 'text-slate-300 opacity-0 group-hover:opacity-100'}`} />
@@ -1808,27 +1958,8 @@ export function AdminDashboard() {
                 <button onClick={() => setActiveTab('Ders Takvimi')} className="text-xs text-slate-400 hover:text-[#6b8e7c]">Tümünü Gör →</button>
               </div>
               
-              {/* Mini Calendar visualization */}
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                <div className="flex justify-between items-center mb-4">
-                  <button aria-label="Önceki ay" onClick={() => setCalendarMonth((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}><ChevronLeft className="h-4 w-4 text-slate-400 cursor-pointer"/></button>
-                  <span className="font-bold text-sm text-slate-700 capitalize">{monthFormatter.format(calendarMonth)}</span>
-                  <button aria-label="Sonraki ay" onClick={() => setCalendarMonth((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1))}><ChevronRight className="h-4 w-4 text-slate-400 cursor-pointer"/></button>
-                </div>
-                <div className="grid grid-cols-7 text-center text-xs font-medium text-slate-400 mb-2">
-                  <div>Pzt</div><div>Sal</div><div>Çar</div><div>Per</div><div>Cum</div><div>Cts</div><div>Paz</div>
-                </div>
-                <div className="grid grid-cols-7 text-center text-xs gap-y-1">
-                  {calendarDays.map(({ day, isCurrentMonth, lessons }, index) => (
-                    <div key={index} className="flex h-7 items-center justify-center">
-                      {isCurrentMonth && <span className={`flex h-7 w-7 items-center justify-center rounded-full ${lessons.length ? 'bg-[#6b8e7c] font-bold text-white' : 'text-slate-600'}`}>{day}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Agenda */}
-              <div className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
+              <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
                 {upcomingLessons.map((lesson) => {
                   const lessonStudent = allStudents.find((student) => student.id === lesson.studentId);
                   return (
@@ -1849,7 +1980,9 @@ export function AdminDashboard() {
             {/* Feedback Feed */}
             <div className="mt-4 border-t border-slate-100 pt-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-[#2d4a3e] flex items-center gap-2"><MessageSquare className="h-4 w-4"/> Son Duygu Paylaşımı</h3>
+                <h3 className="font-bold text-[#2d4a3e] flex items-center gap-2"><MessageSquare className="h-4 w-4"/> Son Duygu Paylaşımı
+                  {!!unreadMoodUpdates.length && <button type="button" onClick={handleReadMoodUpdates} title="Duygu bildirimini okundu olarak işaretle" className="flex min-w-5 items-center justify-center rounded-full bg-[#e85d5d] px-1.5 py-0.5 text-[9px] font-black text-white">+{unreadMoodUpdates.length}</button>}
+                </h3>
                 <span className="text-[10px] text-slate-400">Mesajlardan ayrı</span>
               </div>
 
@@ -1896,6 +2029,46 @@ export function AdminDashboard() {
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Vocabulary */}
+            <div className="mt-4 border-t border-slate-100 pt-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="flex items-center gap-2 font-bold text-[#2d4a3e]"><BookOpen className="h-4 w-4" /> Kelimelerim</h3>
+                  <p className="mt-1 text-[10px] text-slate-400">{selectedStudent?.name || 'Öğrenci'} için kelimeler</p>
+                </div>
+                <Dialog open={isVocabularyOpen} onOpenChange={setIsVocabularyOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="h-8 rounded-xl bg-[#6b8e7c] px-3 text-xs text-white hover:bg-[#5a7868]"><Plus className="mr-1 h-3.5 w-3.5" /> Ekle</Button>
+                  </DialogTrigger>
+                  <DialogContent className="rounded-3xl sm:max-w-lg">
+                    <DialogHeader><DialogTitle className="text-[#2d4a3e]">{selectedStudent?.name} için kelime ekle</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div><label className="text-xs font-bold text-slate-500">Türkçe kelime</label><Input value={vocabularyDraft.word} onChange={(event) => setVocabularyDraft((current) => ({ ...current, word: event.target.value }))} className="mt-1 rounded-xl" placeholder="Örn: keşfetmek" /></div>
+                      <div><label className="text-xs font-bold text-slate-500">Anlamı</label><Input value={vocabularyDraft.meaning} onChange={(event) => setVocabularyDraft((current) => ({ ...current, meaning: event.target.value }))} className="mt-1 rounded-xl" placeholder="Örn: to discover" /></div>
+                      <div><label className="text-xs font-bold text-slate-500">Öğretmenin örnek cümlesi <span className="font-normal text-slate-400">(isteğe bağlı)</span></label><textarea value={vocabularyDraft.tubaExample} onChange={(event) => setVocabularyDraft((current) => ({ ...current, tubaExample: event.target.value }))} className="mt-1 h-24 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#6b8e7c]" placeholder="Bu kelimeyle kısa bir örnek cümle yaz." /></div>
+                      <Button onClick={() => void handleAddVocabulary()} disabled={!vocabularyDraft.word.trim() || !vocabularyDraft.meaning.trim()} className="w-full rounded-xl bg-[#6b8e7c] text-white hover:bg-[#5a7868]">Kelimeyi öğrenciyle paylaş</Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              <div className="rounded-2xl border border-[#dbe7df] bg-[#f5faf7] p-4">
+                {selectedVocabulary?.length ? (
+                  <div className="space-y-2">
+                    {selectedVocabulary.map((item) => (
+                      <div key={item.id} className="flex items-center gap-2 text-xs">
+                        <span className="min-w-0 flex-1 truncate font-bold text-[#4a6b5d]">{item.word}</span>
+                        <span className="max-w-24 truncate text-right text-[10px] text-slate-500">{item.meaning}</span>
+                        <button type="button" onClick={() => void handleDeleteVocabulary(item)} title={`${item.word} kelimesini sil`} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-xs text-slate-400">Henüz kelime eklenmedi.</p>
+                )}
               </div>
             </div>
 
@@ -2096,10 +2269,11 @@ export function AdminDashboard() {
                       <>
                         <div className="flex items-center gap-3 border-b border-[#eef3f0] px-4 py-3 sm:px-6 sm:py-4">
                           <Avatar className="h-11 w-11"><AvatarImage src={selectedStudent.avatar} /><AvatarFallback>{selectedStudent.name[0]}</AvatarFallback></Avatar>
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <h4 className="font-bold text-[#2d4a3e]">{selectedStudent.name}</h4>
                             <p className="text-xs text-slate-500">{selectedStudent.currentLevel || 'Seviye belirtilmedi'} · {selectedStudent.status}</p>
                           </div>
+                          <Button type="button" variant="outline" size="sm" onClick={() => void handleClearSelectedMessages()} className="shrink-0 rounded-xl border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600"><Trash2 className="mr-1.5 h-3.5 w-3.5" /> Mesajları temizle</Button>
                         </div>
 
                         <div className="flex-1 space-y-3 overflow-y-auto bg-[#fcfbf9] p-3 sm:p-6">
@@ -2202,6 +2376,13 @@ export function AdminDashboard() {
                       <Button variant="outline" className="rounded-xl border-[#dbe7df] text-[#2d4a3e]">Düzenle</Button>
                     </section>
                   ))}
+                  <section className="rounded-3xl border border-red-100 bg-red-50/50 p-6 shadow-sm md:col-span-2">
+                    <h4 className="mb-2 font-bold text-red-700">Paylaşım öncesi öğrenci verilerini temizle</h4>
+                    <p className="mb-4 text-sm leading-relaxed text-red-600/80">PIN’leri, profil yazılarını, mesajları, duygu paylaşımlarını, kazanımları, kelimeleri, notları ve bildirimleri siler. Ders ücretleri, bakiyeler, planlanan dersler ve işlenmiş dersler korunur.</p>
+                    <Button onClick={() => void handleResetStudentPortalData()} disabled={isResettingPortalData} className="rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                      <Trash2 className="mr-2 h-4 w-4" /> {isResettingPortalData ? 'Temizleniyor...' : 'Öğrenci içeriklerini temizle'}
+                    </Button>
+                  </section>
                 </div>
               )}
             </div>

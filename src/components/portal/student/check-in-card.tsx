@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, increment, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import type { CheckIn } from '@/lib/types';
 import { saveBridgedCheckIn } from '@/lib/student-message-bridge';
@@ -14,7 +14,7 @@ type StudentRoot = { userId: string; studentId: string } | null;
 export function CheckInCard({ studentRoot }: { studentRoot: StudentRoot }) {
   const firestore = useFirestore();
   const [selectedMood, setSelectedMood] = useState<CheckIn['mood']>('Fena değil');
-  const [note, setNote] = useState('Bu hafta okul biraz yoğundu ama Türkçe çalışmak bana iyi geliyor. Özellikle yeni kelimeler öğrenmek motive ediyor.');
+  const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const moods = [
@@ -45,11 +45,16 @@ export function CheckInCard({ studentRoot }: { studentRoot: StudentRoot }) {
             ...checkIn,
             date: serverTimestamp(),
           });
+          await updateDoc(doc(firestore, 'users', studentRoot.userId, 'students', studentRoot.studentId), {
+            pendingTeacherUpdates: increment(1),
+            lastStudentUpdate: 'Yeni bir duygu paylaşımı yaptı',
+          });
         } catch (error) {
           console.warn('Duygu paylaşımı Firebase kaydına yazılamadı; yerel bağlantı kullanılacak.', error);
         }
       }
       saveBridgedCheckIn(studentRoot.userId, checkIn);
+      setNote('');
       toast({ title: 'Duygun kaydedildi', description: 'Tuba öğretmenin panelinde görebilecek.' });
     } catch (error) {
       console.error(error);
@@ -83,7 +88,7 @@ export function CheckInCard({ studentRoot }: { studentRoot: StudentRoot }) {
       <div className="flex-1 bg-[#fdfaf6] border border-[#f1eee8] rounded-xl p-3 mb-3 relative">
         <textarea 
           className="w-full h-full bg-transparent resize-none outline-none text-sm text-[#4a6b5d] placeholder:text-slate-400"
-          placeholder="Bu hafta okul biraz yoğundu ama Türkçe çalışmak bana iyi geliyor. Özellikle yeni kelimeler öğrenmek motive ediyor."
+          placeholder="Bu hafta nasıl hissettiğini buraya yaz..."
           value={note}
           onChange={(event) => setNote(event.target.value.slice(0, 300))}
         />

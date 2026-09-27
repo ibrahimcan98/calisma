@@ -69,7 +69,8 @@ service cloud.firestore {
             'avatar', 'country', 'birthDate', 'languages', 'interests',
             'favoriteThings', 'hasPet', 'petName', 'backgroundTheme', 'themeColor',
             'preferredName', 'improvementGoal', 'noteForTuba', 'nextLessonRequest',
-            'updatedAt', 'lastEmojiReaction', 'lastReactionMessageId', 'lastReactionMessageContent'
+            'updatedAt', 'lastEmojiReaction', 'lastReactionMessageId', 'lastReactionMessageContent',
+            'pendingTeacherUpdates', 'lastStudentUpdate'
           ])
         );
         allow delete: if isExistingOwner(userId);

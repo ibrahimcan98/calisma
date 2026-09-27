@@ -22,7 +22,7 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
   const firestore = useFirestore();
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
-  const activeTab: string = 'Ana Sayfa';
+  const [activeTab, setActiveTab] = useState('Ana Sayfa');
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -197,6 +197,7 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
           title="Kelimelerim"
           description="Kaydettiğin kelimeleri tekrar et ve örnek cümlelerini yaz."
         >
+          <button type="button" onClick={() => setActiveTab('Ana Sayfa')} className="mb-4 w-fit rounded-xl border border-[#dbe7df] bg-white px-4 py-2 text-sm font-semibold text-[#3b5e4d] hover:bg-[#eef3f0]">← Ana sayfaya dön</button>
           <StudentVocabularyList studentRoot={studentRoot} />
         </StudentModuleShell>
       );
@@ -279,7 +280,7 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
             <NextLessonPoll studentRoot={studentRoot} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <NoteToTuba studentRoot={studentRoot} />
-              <VocabularyWidget studentRoot={studentRoot} />
+              <VocabularyWidget studentRoot={studentRoot} onShowAll={() => setActiveTab('Kelimelerim')} />
             </div>
           </div>
         </div>
