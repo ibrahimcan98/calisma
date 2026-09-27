@@ -40,6 +40,21 @@ import { startOfWeek, format, isSameWeek, endOfWeek } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { StudentBalanceHistory } from './student-balance-history';
 
+function createPaymentSlug(name: string): string {
+  return name
+    .toLocaleLowerCase('tr-TR')
+    .replaceAll('ı', 'i')
+    .replaceAll('ğ', 'g')
+    .replaceAll('ü', 'u')
+    .replaceAll('ş', 's')
+    .replaceAll('ö', 'o')
+    .replaceAll('ç', 'c')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'ogrenci';
+}
+
 export function LessonTracker() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -83,25 +98,32 @@ export function LessonTracker() {
   useEffect(() => {
     if (!user || !rawStudents) return;
 
+    const slugCounts = new Map<string, number>();
     rawStudents.forEach((student) => {
       const token = student.paymentAccessToken || crypto.randomUUID().replaceAll('-', '');
+      const baseSlug = createPaymentSlug(student.name);
+      const nextCount = (slugCounts.get(baseSlug) || 0) + 1;
+      slugCounts.set(baseSlug, nextCount);
+      const slug = student.paymentSlug || (nextCount === 1 ? baseSlug : `${baseSlug}-${nextCount}`);
       const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
-      if (!student.paymentAccessToken) {
-        updateDocumentNonBlocking(studentRef, { paymentAccessToken: token });
+      if (!student.paymentAccessToken || !student.paymentSlug) {
+        updateDocumentNonBlocking(studentRef, { paymentAccessToken: token, paymentSlug: slug });
       }
 
       const publicPaymentRef = doc(firestore, 'publicPaymentLinks', token);
       const studentLogs = (rawLessonLogs || [])
         .filter((log) => log.studentId === student.id)
         .map((log) => ({ id: log.id, date: log.date, lessonPrice: log.lessonPrice }));
-      setDocumentNonBlocking(publicPaymentRef, {
+      const publicPaymentData = {
         ownerId: user.uid,
         studentId: student.id,
         name: student.name,
         balance: student.balance,
         lessonPrice: student.lessonPrice,
         lessonLogs: studentLogs,
-      }, { merge: true });
+      };
+      setDocumentNonBlocking(publicPaymentRef, publicPaymentData, { merge: true });
+      setDocumentNonBlocking(doc(firestore, 'publicPaymentLinks', slug), publicPaymentData, { merge: true });
     });
   }, [firestore, rawLessonLogs, rawStudents, user]);
   
@@ -459,9 +481,9 @@ export function LessonTracker() {
                           <div className="flex-1 text-left">
                               <div className="flex items-center gap-2">
                                   <p className="font-bold text-lg">{student.name}</p>
-                                  {user && student.paymentAccessToken && (
+                                  {user && student.paymentSlug && (
                                     <Link 
-                                      href={`/pay/${user.uid}/${student.id}/${student.paymentAccessToken}`} 
+                                      href={`/veli/${student.paymentSlug}`}
                                       target="_blank" 
                                       rel="noopener noreferrer" 
                                       onClick={(e) => e.stopPropagation()}

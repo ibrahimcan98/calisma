@@ -13,11 +13,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useFirestore } from '@/firebase';
 
 type PublicPaymentData = {
+  ownerId?: string;
+  studentId?: string;
   student: { name: string; balance: number; lessonPrice: number };
   lessonLogs: Array<{ id: string; date: string; lessonPrice: number }>;
 };
 
-export default function PublicPaymentPage() {
+export function PaymentPageContent({ shortSlug }: { shortSlug?: string }) {
   const { userId, studentId, token } = useParams<{ userId: string; studentId: string; token: string }>();
   const searchParams = useSearchParams();
   const firestore = useFirestore();
@@ -25,6 +27,17 @@ export default function PublicPaymentPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (shortSlug) {
+      fetch(`/api/public-parent/${encodeURIComponent(shortSlug)}`)
+        .then(async (response) => {
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.error || 'Veli bilgileri yüklenemedi.');
+          setData(payload);
+        })
+        .catch((fetchError: Error) => setError(fetchError.message || 'Veli bilgileri yüklenemedi.'));
+      return;
+    }
+
     getDoc(doc(firestore, 'publicPaymentLinks', token))
       .then((snapshot) => {
         if (!snapshot.exists()) throw new Error('Bu ödeme bağlantısı henüz hazır değil. Öğretmeninizden bağlantıyı yeniden açmasını isteyin.');
@@ -41,7 +54,7 @@ export default function PublicPaymentPage() {
         });
       })
       .catch((fetchError: Error) => setError(fetchError.message || 'Ödeme bilgileri yüklenemedi.'));
-  }, [firestore, studentId, token, userId]);
+  }, [firestore, shortSlug, studentId, token, userId]);
 
   const stats = useMemo(() => {
     if (!data) return { completed: 0, purchased: 0, remaining: 0 };
@@ -57,6 +70,8 @@ export default function PublicPaymentPage() {
 
   const isPound = ['ata', 'mila'].includes(data.student.name.toLocaleLowerCase('tr-TR'));
   const currency = (amount: number) => new Intl.NumberFormat(isPound ? 'en-GB' : 'de-DE', { style: 'currency', currency: isPound ? 'GBP' : 'EUR' }).format(amount);
+  const paymentUserId = data.ownerId || userId;
+  const paymentStudentId = data.studentId || studentId;
 
   return (
     <main className="min-h-screen bg-[#f4f9ff] px-4 py-8">
@@ -68,7 +83,7 @@ export default function PublicPaymentPage() {
             <CardDescription>Çocuğunuzun ders bakiyesini güvenli ödeme ile güncelleyebilirsiniz.</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4 md:grid-cols-5">
-            {[3, 4, 8, 12, 15].map((count) => <Button key={count} variant="outline" className="h-auto flex-col border-blue-200 bg-white py-4" onClick={() => checkout({ priceId: '', lessonCount: count, userId, metadata: { studentId }, accessToken: token })}><span className="text-lg font-bold">{count} Ders</span><span className="font-semibold text-blue-500">{currency(data.student.lessonPrice * count)}</span></Button>)}
+            {[3, 4, 8, 12, 15].map((count) => <Button key={count} variant="outline" className="h-auto flex-col border-blue-200 bg-white py-4" onClick={() => checkout({ priceId: '', lessonCount: count, userId: paymentUserId, metadata: { studentId: paymentStudentId }, accessToken: shortSlug ? undefined : token, paymentSlug: shortSlug })}><span className="text-lg font-bold">{count} Ders</span><span className="font-semibold text-blue-500">{currency(data.student.lessonPrice * count)}</span></Button>)}
           </CardContent>
         </Card>
 
@@ -85,4 +100,8 @@ export default function PublicPaymentPage() {
       </div>
     </main>
   );
+}
+
+export default function PublicPaymentPage() {
+  return <PaymentPageContent />;
 }

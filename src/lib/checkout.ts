@@ -1,4 +1,4 @@
-export async function checkout({ priceId, amount, lessonCount, studentName, userId, userEmail, metadata, accessToken }: { 
+export async function checkout({ priceId, amount, lessonCount, studentName, userId, userEmail, metadata, accessToken, paymentSlug }: {
   priceId: string; 
   amount?: number;
   lessonCount?: number;
@@ -7,6 +7,7 @@ export async function checkout({ priceId, amount, lessonCount, studentName, user
   userEmail?: string;
   metadata?: any;
   accessToken?: string;
+  paymentSlug?: string;
 }) {
   try {
     const response = await fetch('/api/checkout', {
@@ -23,6 +24,7 @@ export async function checkout({ priceId, amount, lessonCount, studentName, user
         userEmail,
         metadata,
         accessToken,
+        paymentSlug,
       }),
     });
 

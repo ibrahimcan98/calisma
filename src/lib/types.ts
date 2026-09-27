@@ -54,6 +54,7 @@ export type Student = {
   backgroundTheme?: string;
   pin?: string; // For student login
   paymentAccessToken?: string; // Private parent payment-link token
+  paymentSlug?: string; // Short parent page address, e.g. /veli/beliz
   preferredName?: string;
   country?: string;
   timeZone?: string;

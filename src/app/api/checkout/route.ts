@@ -6,18 +6,29 @@ const ALLOWED_LESSON_COUNTS = new Set([3, 4, 8, 12, 15]);
 
 export async function POST(req: Request) {
   try {
-    const { lessonCount, userId, userEmail, metadata, accessToken } = await req.json();
+    const { lessonCount, userId, userEmail, metadata, accessToken, paymentSlug } = await req.json();
     const count = Number(lessonCount);
-    const studentId = metadata?.studentId;
+    let resolvedUserId = userId;
+    let studentId = metadata?.studentId;
 
-    if (!userId || !studentId || !accessToken || !ALLOWED_LESSON_COUNTS.has(count)) {
+    if (paymentSlug) {
+      const aliasSnapshot = await adminDb.doc(`publicPaymentLinks/${paymentSlug}`).get();
+      const alias = aliasSnapshot.data();
+      if (!aliasSnapshot.exists || !alias?.ownerId || !alias?.studentId) {
+        return NextResponse.json({ error: 'Bu veli bağlantısı geçerli değil.' }, { status: 404 });
+      }
+      resolvedUserId = alias.ownerId;
+      studentId = alias.studentId;
+    }
+
+    if (!resolvedUserId || !studentId || (!accessToken && !paymentSlug) || !ALLOWED_LESSON_COUNTS.has(count)) {
       return NextResponse.json({ error: 'Geçersiz ödeme bağlantısı veya ders paketi.' }, { status: 400 });
     }
 
-    const studentSnapshot = await adminDb.doc(`users/${userId}/students/${studentId}`).get();
+    const studentSnapshot = await adminDb.doc(`users/${resolvedUserId}/students/${studentId}`).get();
     const student = studentSnapshot.data();
 
-    if (!studentSnapshot.exists || !student || student.paymentAccessToken !== accessToken) {
+    if (!studentSnapshot.exists || !student || (!paymentSlug && student.paymentAccessToken !== accessToken)) {
       return NextResponse.json({ error: 'Bu ödeme bağlantısı geçerli değil.' }, { status: 403 });
     }
 
@@ -30,7 +41,9 @@ export async function POST(req: Request) {
     const isPound = ['ata', 'mila'].includes(studentName.toLocaleLowerCase('tr-TR'));
     const currencyCode = isPound ? 'gbp' : 'eur';
     const origin = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin;
-    const paymentPath = `/pay/${userId}/${studentId}/${accessToken}`;
+    const paymentPath = paymentSlug
+      ? `/veli/${paymentSlug}`
+      : `/pay/${resolvedUserId}/${studentId}/${accessToken}`;
 
     const session = await getStripe().checkout.sessions.create({
       payment_method_types: ['card'],
@@ -50,7 +63,7 @@ export async function POST(req: Request) {
       cancel_url: `${origin}${paymentPath}?payment=cancelled`,
       ...(userEmail && userEmail.includes('@') ? { customer_email: userEmail } : {}),
       metadata: {
-        userId,
+        userId: resolvedUserId,
         studentId,
         lessonCount: count.toString(),
         packageName: `${count} Ders Paketi`,
