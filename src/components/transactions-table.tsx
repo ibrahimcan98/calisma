@@ -93,8 +93,8 @@ export function TransactionsTable({
                         <div className="h-px flex-1 bg-slate-100" />
                       </div>
                       
-                      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                        <Table>
+                      <div className="touch-scroll overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm sm:rounded-3xl">
+                        <Table className="min-w-[520px]">
                           <TableBody>
                             {dayGroups[dateStr].map((transaction) => {
                               const category = categoryMap.get(transaction.category);

@@ -53,8 +53,10 @@ export type Student = {
   themeColor?: string;
   backgroundTheme?: string;
   pin?: string; // For student login
+  paymentAccessToken?: string; // Private parent payment-link token
   preferredName?: string;
   country?: string;
+  timeZone?: string;
   city?: string;
   birthDate?: Date;
   languages?: string[];
@@ -68,14 +70,29 @@ export type Student = {
   petName?: string;
   improvementGoal?: string;
   noteForTuba?: string;
+  nextLessonRequest?: string;
+  portalMessages?: Message[];
+  portalAchievements?: Achievement[];
+  homeworks?: Homework[];
 
   // Admin details
   startLevel?: string;
+  startDate?: string;
   currentLevel?: string;
   strengths?: string[];
   areasToImprove?: string[];
   privateNotes?: string;
   isActive?: boolean;
+  isArchived?: boolean;
+};
+
+export type Homework = {
+  id: string;
+  title: string;
+  description?: string;
+  dueDate?: string;
+  status: 'assigned' | 'completed';
+  createdAt: string;
 };
 
 export type LessonLog = {
@@ -96,6 +113,10 @@ export type LessonLog = {
     studentStrength?: string;
     nextLessonNote?: string;
     status?: 'scheduled' | 'completed' | 'cancelled';
+    seriesLength?: number;
+    seriesWeek?: number;
+    teacherTimeZone?: string;
+    studentTimeZone?: string;
 
     // Student feedback
     studentRating?: 'Çok keyif aldım' | 'Güzeldi' | 'Biraz zorlandım' | 'Bugün bana uygun değildi';
@@ -131,8 +152,10 @@ export type Achievement = {
   id: string;
   studentId: string;
   title: string;
+  description?: string;
   category: 'Konuşma' | 'Dinleme' | 'Okuma' | 'Yazma' | 'Kelime Bilgisi' | 'Dil Bilgisi' | 'Diğer';
   status: 'Henüz başlamadık' | 'Üzerinde çalışıyoruz' | 'Neredeyse tamam' | 'Başardım';
+  progress?: number;
 };
 
 export type Vocabulary = {

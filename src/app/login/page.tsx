@@ -122,7 +122,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Tabs defaultValue="login" className="w-[400px]">
+      <Tabs defaultValue="login" className="w-full max-w-[400px]">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="login">Giriş Yap</TabsTrigger>
           <TabsTrigger value="signup">Kayıt Ol</TabsTrigger>

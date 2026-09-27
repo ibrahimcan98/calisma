@@ -95,6 +95,7 @@ export function StudentDetailPage({ userId, studentId, isParentMode = false }: S
         studentId: studentId,
         packageName: `${lessonCount} Ders Paketi`,
       },
+      accessToken: student.paymentAccessToken,
     });
   };
 

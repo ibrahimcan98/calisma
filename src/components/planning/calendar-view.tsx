@@ -114,8 +114,8 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
 
   return (
     <Card className="w-full">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div className="flex items-center gap-4">
+      <CardHeader className="flex flex-col items-stretch justify-between gap-3 space-y-0 pb-4 sm:flex-row sm:items-center">
+        <div className="flex items-center justify-between gap-4 sm:justify-start">
           <CardTitle className="text-xl capitalize">
             {format(currentDate, 'MMMM yyyy', { locale: tr })}
           </CardTitle>
@@ -128,12 +128,13 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
             </Button>
           </div>
         </div>
-        <Button onClick={() => setIsAddEventOpen(true)}>
+        <Button onClick={() => setIsAddEventOpen(true)} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" /> Etkinlik Ekle
         </Button>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-7 border-t border-l">
+      <CardContent className="px-3 sm:px-6">
+        <div className="touch-scroll overflow-x-auto pb-2">
+        <div className="grid min-w-[700px] grid-cols-7 border-l border-t">
           {TR_DAYS.map(day => (
             <div key={day} className="p-2 text-center text-sm font-semibold border-r border-b bg-muted/30">
               {day}
@@ -270,6 +271,7 @@ export function CalendarView({ events, workRules, workLogs, birthdays }: Calenda
               </Popover>
             );
           })}
+        </div>
         </div>
       </CardContent>
 

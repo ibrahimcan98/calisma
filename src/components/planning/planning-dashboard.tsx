@@ -85,18 +85,18 @@ export function PlanningDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Online Planlama</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Online Planlama</h1>
       </div>
 
       <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
-          <TabsTrigger value="calendar" className="flex items-center gap-2">
+        <TabsList className="touch-scroll flex h-auto w-full max-w-full justify-start overflow-x-auto p-1 sm:grid sm:max-w-md sm:grid-cols-3">
+          <TabsTrigger value="calendar" className="flex shrink-0 items-center gap-2">
             <Calendar className="h-4 w-4" /> Takvim
           </TabsTrigger>
-          <TabsTrigger value="work" className="flex items-center gap-2">
+          <TabsTrigger value="work" className="flex shrink-0 items-center gap-2">
             <Clock className="h-4 w-4" /> Çalışma Takibi
           </TabsTrigger>
-          <TabsTrigger value="birthdays" className="flex items-center gap-2">
+          <TabsTrigger value="birthdays" className="flex shrink-0 items-center gap-2">
             <Cake className="h-4 w-4" /> Doğum Günleri
           </TabsTrigger>
         </TabsList>

@@ -217,7 +217,7 @@ export function Dashboard() {
   return (
     <div className="flex min-h-screen w-full flex-col bg-slate-50/50">
       <Header />
-      <main className="flex flex-1 flex-col gap-8 p-4 md:p-10 max-w-7xl mx-auto w-full">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-3 sm:p-5 md:gap-8 lg:p-10">
         {/* Upper Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -227,12 +227,12 @@ export function Dashboard() {
               <span className="text-sm font-medium">{format(new Date(), 'MMMM yyyy', { locale: tr })}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-             <Button variant="outline" onClick={() => setAnalysisDialogOpen(true)} className="rounded-xl shadow-sm border-slate-200">
+          <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
+             <Button variant="outline" onClick={() => setAnalysisDialogOpen(true)} className="flex-1 rounded-xl border-slate-200 shadow-sm sm:flex-none">
               <Sparkles className="mr-2 h-4 w-4 text-amber-500" />
               AI Analizi
             </Button>
-            <Button onClick={() => setAddSheetOpen(true)} className="rounded-xl shadow-md bg-primary hover:bg-primary/90 px-6">
+            <Button onClick={() => setAddSheetOpen(true)} className="flex-1 rounded-xl bg-primary px-4 shadow-md hover:bg-primary/90 sm:flex-none sm:px-6">
               <Plus className="mr-2 h-4 w-4" />
               Yeni İşlem Ekle
             </Button>
@@ -253,7 +253,7 @@ export function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-1">
-                <div className="text-5xl font-black tracking-tighter text-slate-900">
+                <div className="break-words text-3xl font-black tracking-normal text-slate-900 sm:text-4xl lg:text-5xl">
                   {formatCurrency(stats.balance)}
                 </div>
                 <div className="flex items-center gap-2 mt-2">
@@ -324,7 +324,7 @@ export function Dashboard() {
         </div>
 
         {/* Charts Section */}
-        <Card className="rounded-3xl border-none shadow-lg bg-white p-8 overflow-hidden">
+        <Card className="overflow-hidden rounded-2xl border-none bg-white p-4 shadow-lg sm:rounded-3xl sm:p-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div>
               <h2 className="text-xl font-bold text-slate-900">Gelir & Gider Analizi</h2>
@@ -337,7 +337,7 @@ export function Dashboard() {
               </TabsList>
             </Tabs>
           </div>
-          <div className="h-[300px] w-full">
+          <div className="h-[240px] w-full sm:h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               {chartType === 'line' ? (
                 <LineChart data={chartData}>
@@ -370,7 +370,7 @@ export function Dashboard() {
 
         {/* Carry Over & Savings Goals */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="rounded-3xl border-none shadow-lg bg-white p-8">
+          <Card className="rounded-2xl border-none bg-white p-4 shadow-lg sm:rounded-3xl sm:p-8">
              <div className="flex items-center gap-4 mb-6">
                 <div className="p-3 bg-indigo-50 rounded-2xl">
                   <PiggyBank className="h-6 w-6 text-indigo-500" />
@@ -380,7 +380,7 @@ export function Dashboard() {
                   <p className="text-sm text-slate-400">Artan tutarı yeni aya aktarın</p>
                 </div>
              </div>
-             <div className="flex items-end gap-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+             <div className="flex flex-col items-stretch gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-end sm:rounded-3xl sm:p-6">
                 <div className="flex-1">
                   <label className="text-[10px] font-bold uppercase text-slate-400 mb-2 block">Devredilecek Tutar</label>
                   <Input
@@ -390,7 +390,7 @@ export function Dashboard() {
                     className="text-2xl font-black bg-transparent border-none p-0 focus-visible:ring-0"
                   />
                 </div>
-                <Button onClick={handleCarryOver} className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 px-8 h-12">
+                <Button onClick={handleCarryOver} className="h-12 rounded-2xl bg-indigo-600 px-8 hover:bg-indigo-700">
                   <Plus className="mr-2 h-4 w-4" /> Aktar
                 </Button>
              </div>
@@ -402,13 +402,13 @@ export function Dashboard() {
         <div className="space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-               <TabsList className="bg-white shadow-sm border border-slate-100 rounded-2xl p-1 w-full md:w-auto h-auto">
-                <TabsTrigger value="all" className="rounded-xl px-6 py-2">Tüm İşlemler</TabsTrigger>
-                <TabsTrigger value="income" className="rounded-xl px-6 py-2">Gelirler</TabsTrigger>
-                <TabsTrigger value="expense" className="rounded-xl px-6 py-2">Giderler</TabsTrigger>
+               <TabsList className="grid h-auto w-full grid-cols-3 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm md:w-auto">
+                <TabsTrigger value="all" className="rounded-xl px-2 py-2 sm:px-6">Tüm İşlemler</TabsTrigger>
+                <TabsTrigger value="income" className="rounded-xl px-2 py-2 sm:px-6">Gelirler</TabsTrigger>
+                <TabsTrigger value="expense" className="rounded-xl px-2 py-2 sm:px-6">Giderler</TabsTrigger>
               </TabsList>
               
-              <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row md:w-auto md:items-center">
                 <div className="relative flex-1 md:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input 
@@ -419,7 +419,7 @@ export function Dashboard() {
                   />
                 </div>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-[140px] rounded-xl bg-white border-slate-200 shadow-sm">
+                  <SelectTrigger className="w-full rounded-xl border-slate-200 bg-white shadow-sm sm:w-[140px]">
                     <Filter className="h-4 w-4 mr-2 text-slate-400" />
                     <SelectValue placeholder="Kategori" />
                   </SelectTrigger>

@@ -65,5 +65,25 @@
   }
   body {
     @apply bg-background text-foreground;
+    min-width: 320px;
+    overflow-x: hidden;
+  }
+
+  html {
+    overflow-x: hidden;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+}
+
+@layer utilities {
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
   }
 }

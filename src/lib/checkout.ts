@@ -1,8 +1,4 @@
-import { loadStripe } from '@stripe/stripe-js';
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-
-export async function checkout({ priceId, amount, lessonCount, studentName, userId, userEmail, metadata }: { 
+export async function checkout({ priceId, amount, lessonCount, studentName, userId, userEmail, metadata, accessToken }: { 
   priceId: string; 
   amount?: number;
   lessonCount?: number;
@@ -10,6 +6,7 @@ export async function checkout({ priceId, amount, lessonCount, studentName, user
   userId?: string; 
   userEmail?: string;
   metadata?: any;
+  accessToken?: string;
 }) {
   try {
     const response = await fetch('/api/checkout', {
@@ -25,6 +22,7 @@ export async function checkout({ priceId, amount, lessonCount, studentName, user
         userId,
         userEmail,
         metadata,
+        accessToken,
       }),
     });
 
@@ -34,18 +32,8 @@ export async function checkout({ priceId, amount, lessonCount, studentName, user
       throw new Error(session.error);
     }
 
-    if (session.url) {
-      window.location.href = session.url;
-    } else {
-      const stripe = await stripePromise;
-      const { error } = await stripe!.redirectToCheckout({
-        sessionId: session.sessionId,
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-    }
+    if (!session.url) throw new Error('Ödeme bağlantısı oluşturulamadı.');
+    window.location.assign(session.url);
   } catch (error) {
     console.error('Checkout Error:', error);
     alert('Ödeme başlatılırken bir hata oluştu. Lütfen tekrar deneyin.');

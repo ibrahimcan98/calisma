@@ -43,7 +43,7 @@ export function Header() {
 
           {/* Masaüstü Navigasyon */}
           {!isUserLoading && user && (
-            <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden xl:flex items-center gap-1">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
@@ -73,7 +73,7 @@ export function Header() {
           {!isUserLoading && user && (
             <div className="flex items-center gap-2">
               {/* Mobil Navigasyon */}
-              <div className="md:hidden">
+              <div className="xl:hidden">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="icon" className="h-9 w-9">

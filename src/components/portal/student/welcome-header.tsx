@@ -2,17 +2,17 @@ import { Search } from 'lucide-react';
 
 export function WelcomeHeader({ name }: { name: string }) {
   return (
-    <div className="relative w-full h-32 md:h-40 flex items-center justify-between px-8 border-b border-[#f1eee8] shrink-0 bg-[#fdfaf6]">
+    <div className="relative flex min-h-28 w-full shrink-0 items-center justify-between overflow-hidden border-b border-[#f1eee8] bg-[#fdfaf6] py-6 pl-4 pr-24 sm:px-6 md:min-h-36 xl:px-8">
       {/* Background Illustration Simulation */}
       <div className="absolute inset-0 opacity-40 pointer-events-none overflow-hidden">
         <div className="w-full h-full bg-[url('https://api.dicebear.com/7.x/shapes/svg?seed=city&backgroundColor=transparent')] bg-cover bg-center mix-blend-multiply opacity-20" />
       </div>
 
       <div className="relative z-10 flex flex-col justify-center">
-        <h1 className="text-4xl md:text-5xl font-bold text-[#1f3a2f] font-serif tracking-tight flex items-center gap-2">
+        <h1 className="flex flex-wrap items-center gap-2 font-serif text-3xl font-bold text-[#1f3a2f] sm:text-4xl md:text-5xl">
           Merhaba {name}! <span className="text-[#e89b7b] text-3xl">✨</span>
         </h1>
-        <p className="text-[#2d4a3e] mt-1 font-medium text-lg flex items-center gap-1">
+        <p className="mt-1 flex items-center gap-1 text-sm font-medium text-[#2d4a3e] sm:text-base md:text-lg">
           Burası tamamen sana ait. <span className="text-red-400">♥</span>
         </p>
       </div>

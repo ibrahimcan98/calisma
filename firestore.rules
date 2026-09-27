@@ -61,40 +61,64 @@ service cloud.firestore {
       }
 
       match /students/{studentId} {
-        allow get, list: if true; // Public access for reports & login
+        allow get, list: if isSignedIn();
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow update: if (isExistingOwner(userId) && request.resource.data.userId == resource.data.userId) || (
+          // Öğrenci portalından profil ve avatar güncellemesine izin ver
+          isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'avatar', 'country', 'birthDate', 'languages', 'interests',
+            'favoriteThings', 'hasPet', 'petName', 'backgroundTheme', 'themeColor',
+            'preferredName', 'improvementGoal', 'noteForTuba', 'nextLessonRequest',
+            'updatedAt', 'lastEmojiReaction', 'lastReactionMessageId', 'lastReactionMessageContent'
+          ])
+        );
         allow delete: if isExistingOwner(userId);
 
         match /balanceLogs/{logId} {
-          allow get, list: if true;
+          allow get, list: if isSignedIn();
           allow create: if isOwner(userId);
           allow delete: if isOwner(userId);
         }
         
         match /messages/{messageId} {
-          allow get, list: if true;
-          allow create, update, delete: if isOwner(userId);
+          allow get, list: if isSignedIn();
+          allow create: if isOwner(userId) || (
+            isSignedIn() &&
+            request.resource.data.studentId == studentId &&
+            request.resource.data.senderRole == 'student'
+          );
+          allow update: if isOwner(userId) || (
+            isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['emojiReaction', 'isRead'])
+          );
+          allow delete: if isOwner(userId);
         }
         
         match /checkIns/{checkInId} {
-          allow get, list: if true;
-          allow create, update, delete: if true; // Students can create check-ins
+          allow get, list: if isSignedIn();
+          allow create, update: if isOwner(userId) || (
+            isSignedIn() && request.resource.data.studentId == studentId
+          );
+          allow delete: if isOwner(userId);
         }
         
         match /achievements/{achvId} {
-          allow get, list: if true;
+          allow get, list: if isSignedIn();
           allow create, update, delete: if isOwner(userId);
         }
         
         match /vocabularies/{vocabId} {
-          allow get, list: if true;
+          allow get, list: if isSignedIn();
+          allow create, update, delete: if isOwner(userId);
+        }
+
+        match /vocabulary/{vocabId} {
+          allow get, list: if isSignedIn();
           allow create, update, delete: if isOwner(userId);
         }
       }
 
       match /lessonLogs/{logId} {
-        allow get, list: if true;
+        allow get, list: if isSignedIn();
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
         allow update: if isExistingOwner(userId);
         allow delete: if isExistingOwner(userId);
@@ -131,9 +155,22 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Tahmin edilemez belge kimliği, veli ödeme sayfasının erişim anahtarıdır.
+    // Listeleme kapalıdır; yalnızca bağlantının tamamına sahip kişi tek belgeyi okuyabilir.
+    match /publicPaymentLinks/{token} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.studentId == resource.data.studentId;
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
     // Allow collectionGroup query for students PIN login
     match /{path=**}/students/{studentId} {
-      allow read: if true; 
+      allow read: if isSignedIn();
     }
   }
 }

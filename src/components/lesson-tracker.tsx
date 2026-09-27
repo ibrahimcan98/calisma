@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Student, LessonLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,6 +79,31 @@ export function LessonTracker() {
       createdAt: (s.createdAt as any)?.toDate() ?? new Date(),
     })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.createdAt.getTime() - b.createdAt.getTime());
   }, [rawStudents]);
+
+  useEffect(() => {
+    if (!user || !rawStudents) return;
+
+    rawStudents.forEach((student) => {
+      const token = student.paymentAccessToken || crypto.randomUUID().replaceAll('-', '');
+      const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
+      if (!student.paymentAccessToken) {
+        updateDocumentNonBlocking(studentRef, { paymentAccessToken: token });
+      }
+
+      const publicPaymentRef = doc(firestore, 'publicPaymentLinks', token);
+      const studentLogs = (rawLessonLogs || [])
+        .filter((log) => log.studentId === student.id)
+        .map((log) => ({ id: log.id, date: log.date, lessonPrice: log.lessonPrice }));
+      setDocumentNonBlocking(publicPaymentRef, {
+        ownerId: user.uid,
+        studentId: student.id,
+        name: student.name,
+        balance: student.balance,
+        lessonPrice: student.lessonPrice,
+        lessonLogs: studentLogs,
+      }, { merge: true });
+    });
+  }, [firestore, rawLessonLogs, rawStudents, user]);
   
   const lessonLogs = useMemo(() => {
     if (!rawLessonLogs) return [];
@@ -163,6 +188,7 @@ export function LessonTracker() {
       userId: user.uid,
       createdAt: serverTimestamp(),
       order: students.length,
+      paymentAccessToken: crypto.randomUUID().replaceAll('-', ''),
     });
     setNewStudentName('');
     setNewStudentLessonPrice('');
@@ -433,9 +459,9 @@ export function LessonTracker() {
                           <div className="flex-1 text-left">
                               <div className="flex items-center gap-2">
                                   <p className="font-bold text-lg">{student.name}</p>
-                                  {user && (
+                                  {user && student.paymentAccessToken && (
                                     <Link 
-                                      href={`/student/${user.uid}/${student.id}?mode=parent`} 
+                                      href={`/pay/${user.uid}/${student.id}/${student.paymentAccessToken}`} 
                                       target="_blank" 
                                       rel="noopener noreferrer" 
                                       onClick={(e) => e.stopPropagation()}
