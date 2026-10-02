@@ -6,6 +6,11 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 export const metadata: Metadata = {
   title: "Tuba's Classroom",
   description: "Tuba's Classroom öğrenci ve ders takip platformu.",
+  icons: {
+    icon: '/tubas-classroom-mark.svg',
+    shortcut: '/tubas-classroom-mark.svg',
+    apple: '/tubas-classroom-mark.svg',
+  },
 };
 
 export default function RootLayout({

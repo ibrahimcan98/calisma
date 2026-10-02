@@ -1,6 +1,6 @@
 'use client';
 
-import { Wallet, User, LogOut, LayoutDashboard, BookOpen, Calendar, UserCircle, GraduationCap } from 'lucide-react';
+import { User, LogOut, LayoutDashboard, BookOpen, Calendar, UserCircle, GraduationCap } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useUser, useAuth } from '@/firebase';
 import Link from 'next/link';
@@ -33,9 +33,11 @@ export function Header() {
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="bg-primary p-1.5 rounded-lg group-hover:rotate-12 transition-transform">
-              <Wallet className="h-6 w-6 text-primary-foreground" />
-            </div>
+            <img
+              src="/tubas-classroom-mark.svg"
+              alt=""
+              className="h-9 w-9 rounded-xl shadow-sm transition-transform duration-200 group-hover:-rotate-3 group-hover:scale-105"
+            />
             <h1 className="text-xl font-bold tracking-tight text-foreground hidden sm:block">
               Tuba&apos;s Classroom
             </h1>
