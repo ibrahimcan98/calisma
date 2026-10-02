@@ -24,8 +24,8 @@ export function Header() {
     { href: '/', label: 'Gösterge Paneli', icon: LayoutDashboard },
     { href: '/lessons', label: 'Ders Takibi', icon: BookOpen },
     { href: '/planning', label: 'Çalışma & Planlama', icon: Calendar },
-    { href: '/profile', label: 'Profil', icon: UserCircle },
     { href: '/portal', label: 'Portal (Öğrenci)', icon: GraduationCap },
+    { href: '/profile', label: 'Profil', icon: UserCircle },
   ];
 
   return (

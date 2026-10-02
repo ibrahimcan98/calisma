@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AdminDashboard } from '@/components/portal/admin-dashboard';
 import { StudentDashboard } from '@/components/portal/student-dashboard';
+import { Header } from '@/components/header';
 import { collection, collectionGroup, query, where, getDocs } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 
@@ -116,7 +117,12 @@ export default function PortalPage() {
 
   // 1. If Tuba (Admin) is logged in via Firebase Auth
   if (user && user.email === 'tubakodak8@gmail.com') {
-    return <AdminDashboard />;
+    return (
+      <div className="flex min-h-screen w-full flex-col">
+        <Header />
+        <AdminDashboard />
+      </div>
+    );
   }
 
   // If someone else is logged in (not Tuba), we can either force sign out or just not show the admin dashboard.

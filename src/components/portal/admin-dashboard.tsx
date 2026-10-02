@@ -297,7 +297,7 @@ export function AdminDashboard() {
            (s.pin ? localStorage.getItem(`student_portal_avatar_${s.pin}`) : null))
         : null;
 
-      const activeAvatar = remoteProfile.avatar || bridged.avatar || directAvatar || s.avatar || cached.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(s.name)}`;
+      const activeAvatar = remoteProfile.avatar || bridged.avatar || directAvatar || s.avatar || cached.avatar || '/student-avatars/robot.png';
       const activeCountry = remoteProfile.country || bridged.country || s.country || cached.country || 'Türkiye';
       const activePreferredName = remoteProfile.preferredName || bridged.preferredName || s.preferredName || cached.preferredName || s.name;
       const syncedBirthDate = remoteProfile.birthDate || bridged.birthDate;
@@ -315,6 +315,8 @@ export function AdminDashboard() {
         ...s,
         ...bridged,
         ...remoteProfile,
+        // PIN güvenlik bilgisidir; eski profil köprüsü Firestore'daki yeni PIN'in üzerine yazmamalı.
+        pin: s.pin || cached.pin || '',
         avatar: activeAvatar,
         preferredName: activePreferredName,
         country: activeCountry,
@@ -369,7 +371,7 @@ export function AdminDashboard() {
       isActive: true,
       themeColor: '#6b8e7c',
       backgroundTheme: 'doğa',
-      avatar: `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(name)}&backgroundColor=e8f1ec`,
+      avatar: '/student-avatars/robot.png',
       createdAt: serverTimestamp(),
       restoredAt: serverTimestamp(),
     }))).then(() => {
@@ -703,12 +705,15 @@ export function AdminDashboard() {
     .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999')), [allStudents, homeworkFilterId]);
 
   const handleUpdatePin = async () => {
-    if (!user || !selectedStudent || !editingPin) return;
+    if (!user || !selectedStudent || editingPin.length !== 4) return;
     try {
       const studentRef = doc(firestore, 'users', user.uid, 'students', selectedStudent.id);
       await updateDoc(studentRef, { pin: editingPin });
       const rawCache = localStorage.getItem('student_portal_pin_cache');
       const cache = rawCache ? JSON.parse(rawCache) as Record<string, string> : {};
+      Object.keys(cache).forEach((pin) => {
+        if (cache[pin] === `student:${user.uid}:${selectedStudent.id}`) delete cache[pin];
+      });
       cache[editingPin] = `student:${user.uid}:${selectedStudent.id}`;
       localStorage.setItem('student_portal_pin_cache', JSON.stringify(cache));
 
@@ -1074,7 +1079,7 @@ export function AdminDashboard() {
       isActive: true,
       themeColor: '#6b8e7c',
       backgroundTheme: 'doğa',
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(trimmedName)}`,
+      avatar: '/student-avatars/robot.png',
       createdAt: serverTimestamp(),
     });
 
@@ -1101,7 +1106,7 @@ export function AdminDashboard() {
       isActive: true,
       themeColor: '#6b8e7c',
       backgroundTheme: 'doğa',
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(trimmedName)}`,
+      avatar: '/student-avatars/robot.png',
       createdAt: new Date(),
     });
     localStorage.setItem('student_portal_students_cache', JSON.stringify(studentCache));
@@ -1219,7 +1224,7 @@ export function AdminDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col overflow-x-hidden bg-[#fcfbf9] font-sans text-slate-800 xl:h-screen xl:flex-row xl:overflow-hidden">
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col overflow-x-hidden bg-[#fcfbf9] font-sans text-slate-800 xl:h-[calc(100vh-4rem)] xl:flex-row xl:overflow-hidden">
       
       {/* 1. SIDEBAR */}
       <aside className="flex w-full shrink-0 items-center gap-3 border-b border-[#eef3f0] bg-white px-3 py-3 xl:h-full xl:w-64 xl:flex-col xl:items-stretch xl:justify-between xl:overflow-y-auto xl:border-b-0 xl:border-r xl:py-4">
@@ -1425,15 +1430,21 @@ export function AdminDashboard() {
              {/* Profile Header */}
              <div className="relative rounded-2xl border border-[#eef3f0] bg-white p-4 shadow-sm sm:p-6 sm:rounded-3xl">
                 <div className="mb-4 flex items-center justify-end gap-2">
-                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <Dialog
+                    open={isDialogOpen}
+                    onOpenChange={(open) => {
+                      setIsDialogOpen(open);
+                      setEditingPin(open ? (selectedStudent.pin || '') : '');
+                    }}
+                  >
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" className="text-slate-500 rounded-xl font-medium border-[#eef3f0]">
-                        {selectedStudent.pin ? `PIN: ${selectedStudent.pin}` : 'PIN Belirle'}
+                        {selectedStudent.pin ? `PIN Değiştir: ${selectedStudent.pin}` : 'PIN Belirle'}
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-xs rounded-3xl">
                       <DialogHeader>
-                        <DialogTitle className="text-[#2d4a3e]">PIN Belirle ({selectedStudent.name})</DialogTitle>
+                        <DialogTitle className="text-[#2d4a3e]">{selectedStudent.pin ? 'PIN Değiştir' : 'PIN Belirle'} ({selectedStudent.name})</DialogTitle>
                       </DialogHeader>
                       <div className="flex flex-col gap-4 py-4">
                         <Input 
@@ -1443,7 +1454,7 @@ export function AdminDashboard() {
                           onChange={e => setEditingPin(e.target.value.replace(/\D/g, ''))}
                           className="text-center text-2xl tracking-[0.5em] h-14"
                         />
-                        <Button onClick={handleUpdatePin} className="bg-[#6b8e7c] text-white rounded-xl h-12">Kaydet</Button>
+                        <Button disabled={editingPin.length !== 4} onClick={handleUpdatePin} className="bg-[#6b8e7c] text-white rounded-xl h-12">{selectedStudent.pin ? 'Yeni PIN’i Kaydet' : 'Kaydet'}</Button>
                         <p className="text-xs text-slate-500 text-center">Mevcut PIN: {selectedStudent.pin || 'Yok'}</p>
                       </div>
                     </DialogContent>

@@ -18,6 +18,32 @@ import { NextLessonPoll, NoteToTuba, StudentVocabularyList, VocabularyWidget } f
 import { readBridgedProfile, sanitizeForFirestore, subscribeBridge } from '@/lib/student-message-bridge';
 import { defaultTimeZoneForCountry } from '@/lib/time-zones';
 
+function studentThemeStyle(theme?: string): React.CSSProperties {
+  switch (theme) {
+    case 'sade':
+      return {
+        backgroundColor: '#fdfaf6',
+        backgroundImage: 'radial-gradient(circle at 20% 10%, rgba(203, 190, 168, 0.18), transparent 34%)',
+      };
+    case 'gece':
+      return {
+        backgroundColor: '#142536',
+        backgroundImage: 'radial-gradient(circle at 15% 10%, rgba(255, 235, 153, 0.15), transparent 28%), radial-gradient(circle at 85% 25%, rgba(119, 158, 203, 0.18), transparent 32%)',
+      };
+    case 'kahve':
+      return {
+        backgroundColor: '#fff3ee',
+        backgroundImage: 'radial-gradient(circle at 18% 12%, rgba(181, 125, 91, 0.16), transparent 32%)',
+      };
+    case 'doğa':
+    default:
+      return {
+        backgroundColor: '#edf6f1',
+        backgroundImage: 'radial-gradient(circle at 15% 12%, rgba(107, 142, 124, 0.17), transparent 34%)',
+      };
+  }
+}
+
 export function StudentDashboard({ studentId }: { studentId: string }) {
   const firestore = useFirestore();
   const [student, setStudent] = useState<Student | null>(null);
@@ -289,7 +315,10 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-white font-sans lg:h-screen lg:overflow-hidden">
+    <div
+      className="flex min-h-screen flex-col font-sans transition-[background-color,background-image] duration-500 lg:h-screen lg:overflow-hidden"
+      style={studentThemeStyle(student.backgroundTheme)}
+    >
       <div className="flex min-w-0 flex-1 flex-col lg:h-screen lg:overflow-y-auto lg:overflow-x-hidden">
         <WelcomeHeader name={student.preferredName || student.name} />
         
@@ -349,7 +378,7 @@ function normalizeStudent(data: Student, id: string, userId: string): Student {
     ...bridged,
     id,
     userId,
-    avatar: localAvatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(data.name)}&backgroundColor=e8f1ec`,
+    avatar: localAvatar || '/student-avatars/robot.png',
     themeColor: data.themeColor || '#6b8e7c',
     preferredName: localPreferredName,
     country: localCountry,

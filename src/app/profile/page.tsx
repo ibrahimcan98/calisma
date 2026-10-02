@@ -6,6 +6,7 @@ import { useUser, useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2, User as UserIcon } from 'lucide-react';
+import { Header } from '@/components/header';
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
@@ -32,8 +33,10 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+      <Header />
+      <main className="flex flex-1 items-center justify-center p-4">
+        <Card className="w-full max-w-md">
         <CardHeader className="items-center text-center">
             <div className="p-4 bg-secondary rounded-full mb-4">
               <UserIcon className="h-12 w-12 text-muted-foreground" />
@@ -54,7 +57,8 @@ export default function ProfilePage() {
             Çıkış Yap
           </Button>
         </CardContent>
-      </Card>
+        </Card>
+      </main>
     </div>
   );
 }

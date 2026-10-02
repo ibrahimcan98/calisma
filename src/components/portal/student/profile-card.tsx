@@ -30,88 +30,88 @@ export interface FunnyAvatar {
 
 export const FUNNY_AVATARS: FunnyAvatar[] = [
   {
-    id: 'cool-bot',
-    name: 'Gözlüklü Robot',
-    tag: 'Dahi Bot',
-    emoji: '🤖',
-    url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Gizmo&backgroundColor=ffd5dc',
+    id: 'balina',
+    name: 'Balina',
+    tag: 'Neşeli Denizci',
+    emoji: '🐋',
+    url: '/student-avatars/balina.png',
   },
   {
-    id: 'crazy-spark',
-    name: 'Çılgın Kıvılcım',
-    tag: 'Enerjik',
-    emoji: '⚡',
-    url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Sparky&backgroundColor=ede9fe',
+    id: 'baykus',
+    name: 'Baykuş',
+    tag: 'Bilge Kaşif',
+    emoji: '🦉',
+    url: '/student-avatars/baykus.png',
   },
   {
-    id: 'space-buddy',
-    name: 'Uzay Kaşifi',
-    tag: 'Astronot',
-    emoji: '🚀',
-    url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Cosmo&backgroundColor=dbeafe',
-  },
-  {
-    id: 'happy-smile',
-    name: 'Koca Gülümseme',
-    tag: 'Neşeli',
-    emoji: '😄',
-    url: 'https://api.dicebear.com/7.x/big-smile/svg?seed=Felix&backgroundColor=e8f1ec',
-  },
-  {
-    id: 'cute-panda',
-    name: 'Neşeli Panda',
-    tag: 'Tatlı Panda',
-    emoji: '🐼',
-    url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Coco&backgroundColor=fef3c7',
-  },
-  {
-    id: 'clever-fox',
-    name: 'Akıllı Tilki',
-    tag: 'Kurnaz Tilki',
-    emoji: '🦊',
-    url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Milo&backgroundColor=ffedd5',
-  },
-  {
-    id: 'rockstar',
-    name: 'Rockstar Kedi',
-    tag: 'Müzisyen',
-    emoji: '🎸',
-    url: 'https://api.dicebear.com/7.x/big-smile/svg?seed=Leo&backgroundColor=fce7f3',
-  },
-  {
-    id: 'super-hero',
-    name: 'Süper Kahraman',
-    tag: 'Cesur Pelerin',
-    emoji: '🦸',
-    url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Buster&backgroundColor=dcfce7',
-  },
-  {
-    id: 'creative-artist',
-    name: 'Çılgın Ressam',
-    tag: 'Sanatçı',
-    emoji: '🎨',
-    url: 'https://api.dicebear.com/7.x/notionists/svg?seed=creative-kid&backgroundColor=dbeafe',
-  },
-  {
-    id: 'funny-dino',
-    name: 'Komik Dino',
-    tag: 'Obur Dino',
-    emoji: '🦖',
-    url: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=DinoFun&backgroundColor=fed7aa',
-  },
-  {
-    id: 'froggy-king',
-    name: 'Kral Kurbağa',
-    tag: 'Vırak Prens',
-    emoji: '🐸',
-    url: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Kermit&backgroundColor=d9f99d',
-  },
-  {
-    id: 'dreamy-star',
-    name: 'Yıldız Çocuk',
+    id: 'bulut',
+    name: 'Bulut',
     tag: 'Hayalperest',
-    emoji: '✨',
-    url: 'https://api.dicebear.com/7.x/lorelei/svg?seed=SunnySky&backgroundColor=fef08a',
+    emoji: '☁️',
+    url: '/student-avatars/bulut.png',
+  },
+  {
+    id: 'ejderha',
+    name: 'Ejderha',
+    tag: 'Cesur Maceracı',
+    emoji: '🐉',
+    url: '/student-avatars/ejderha.png',
+  },
+  {
+    id: 'kedi',
+    name: 'Kedi',
+    tag: 'Meraklı Dost',
+    emoji: '🐱',
+    url: '/student-avatars/kedi.png',
+  },
+  {
+    id: 'mantar',
+    name: 'Mantar',
+    tag: 'Orman Gezgini',
+    emoji: '🍄',
+    url: '/student-avatars/mantar.png',
+  },
+  {
+    id: 'orman',
+    name: 'Orman',
+    tag: 'Doğa Dostu',
+    emoji: '🌲',
+    url: '/student-avatars/orman.png',
+  },
+  {
+    id: 'penguen',
+    name: 'Penguen',
+    tag: 'Sevimli Gezgin',
+    emoji: '🐧',
+    url: '/student-avatars/penguen.png',
+  },
+  {
+    id: 'robot',
+    name: 'Robot',
+    tag: 'Teknoloji Ustası',
+    emoji: '🤖',
+    url: '/student-avatars/robot.png',
+  },
+  {
+    id: 'tavsan',
+    name: 'Tavşan',
+    tag: 'Hızlı Öğrenci',
+    emoji: '🐰',
+    url: '/student-avatars/tavsan.png',
+  },
+  {
+    id: 'tilki',
+    name: 'Tilki',
+    tag: 'Akıllı Kaşif',
+    emoji: '🦊',
+    url: '/student-avatars/tilki.png',
+  },
+  {
+    id: 'yildiz',
+    name: 'Yıldız',
+    tag: 'Parlayan Yetenek',
+    emoji: '⭐',
+    url: '/student-avatars/yildiz.png',
   },
 ];
 
@@ -188,6 +188,7 @@ export function ProfileCard({
     FUNNY_AVATARS[0].url;
 
   const displayName = localStudent.preferredName || localStudent.name || student.name;
+  const activeBackgroundTheme = localStudent.backgroundTheme || student.backgroundTheme || 'doğa';
 
   const updateStudent = async (data: Partial<Student>, message: string) => {
     // 1. Optimistic UI update
@@ -306,7 +307,7 @@ export function ProfileCard({
               {/* Avatar Seçimi */}
               <div className="py-2">
                 <label className="block text-xs font-bold text-slate-500 mb-2">
-                  Komik Avatarını Seç:
+                  Avatarını Seç:
                 </label>
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                   {FUNNY_AVATARS.map((item) => {
@@ -324,7 +325,7 @@ export function ProfileCard({
                         }`}
                       >
                         <div className="h-10 w-10 mx-auto overflow-hidden rounded-full border border-white bg-white">
-                          <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+                          <img src={item.url} alt={item.name} className="h-full w-full scale-[1.12] object-cover" />
                         </div>
                         <span className="mt-1 block truncate text-[9px] font-medium text-slate-600">
                           {item.name.split(' ')[0]}
@@ -407,7 +408,7 @@ export function ProfileCard({
               <button
                 type="button"
                 onClick={handleNextAvatar}
-                title="Tıkla avatarını değiştir (12 Komik Avatar)"
+                title="Tıkla avatarını değiştir (12 karakter)"
                 className="relative block rounded-full focus:outline-none focus:ring-4 focus:ring-[#6b8e7c]/40 transition-transform active:scale-95 cursor-pointer"
               >
                 <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-[#f1eee8] bg-white shadow-md transition-all group-hover:scale-105 group-hover:border-[#6b8e7c]">
@@ -415,7 +416,7 @@ export function ProfileCard({
                     key={currentAvatar}
                     src={currentAvatar}
                     alt={displayName}
-                    className="h-full w-full object-cover transition-transform duration-200"
+                    className="h-full w-full scale-[1.12] object-cover transition-transform duration-200"
                   />
                 </div>
                 <div
@@ -469,7 +470,7 @@ export function ProfileCard({
           <DialogHeader>
             <DialogTitle className="text-[#2d4a3e] flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-amber-500" />
-              Avatarını Seç (12 Komik Karakter)
+              Avatarını Seç (12 Karakter)
             </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-slate-500">
@@ -490,7 +491,7 @@ export function ProfileCard({
                   }`}
                 >
                   <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-white shadow-sm bg-white">
-                    <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+                    <img src={item.url} alt={item.name} className="h-full w-full scale-[1.12] object-cover" />
                   </div>
                   <span className="mt-2 text-xs font-bold text-[#2d4a3e] text-center leading-tight">
                     {item.name}
@@ -519,7 +520,7 @@ export function ProfileCard({
               Avatarını seç
             </h3>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-              12 Komik Avatar
+              12 Karakter
             </span>
           </div>
           <div className="grid grid-cols-4 sm:grid-cols-6 xl:grid-cols-4 gap-2.5">
@@ -538,7 +539,7 @@ export function ProfileCard({
                   }`}
                 >
                   <div className="h-11 w-11 overflow-hidden rounded-full border border-slate-100 bg-white shadow-xs">
-                    <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+                    <img src={item.url} alt={item.name} className="h-full w-full scale-[1.12] object-cover" />
                   </div>
                   <span className="mt-1 max-w-full truncate text-[9px] font-medium text-slate-600 leading-tight">
                     {item.name.split(' ')[0]}
@@ -562,7 +563,7 @@ export function ProfileCard({
               <button
                 key={theme.value}
                 onClick={() => updateStudent({ backgroundTheme: theme.value }, 'Tema seçimin kaydedildi')}
-                className={`h-16 w-12 rounded-xl cursor-pointer shadow-sm border ${localStudent.backgroundTheme === theme.value || student.backgroundTheme === theme.value ? 'border-[#6b8e7c] ring-1 ring-[#6b8e7c]' : 'border-transparent'} ${theme.className} flex items-end justify-center pb-2 text-lg hover:scale-105 transition-all`}
+                className={`h-16 w-12 rounded-xl cursor-pointer shadow-sm border ${activeBackgroundTheme === theme.value ? 'border-[#6b8e7c] ring-1 ring-[#6b8e7c]' : 'border-transparent'} ${theme.className} flex items-end justify-center pb-2 text-lg hover:scale-105 transition-all`}
               >
                 {theme.icon}
               </button>
