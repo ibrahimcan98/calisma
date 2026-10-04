@@ -4,12 +4,12 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Home, CalendarDays, BookOpen, FileText, MessageSquare, 
   StickyNote, BarChart2, Settings, Search, Plus, Calendar as CalendarIcon,
-  Send, MoreHorizontal, ChevronRight, ChevronLeft, LogOut, Trash2, Pencil, Sparkles, Check
+  Send, MoreHorizontal, ChevronRight, ChevronLeft, Trash2, Pencil, Sparkles, Check
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth, useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { addDoc, arrayUnion, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import type { Achievement, CheckIn, Homework, LessonLog, Message, Student, Vocabulary } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -34,6 +34,7 @@ const monthFormatter = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: '
 const lessonDateFormatter = new Intl.DateTimeFormat('tr-TR', { timeZone: TEACHER_TIME_ZONE, day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 const achievementStatuses: Achievement['status'][] = ['Henüz başlamadık', 'Üzerinde çalışıyoruz', 'Neredeyse tamam', 'Başardım'];
 const achievementCategories: Achievement['category'][] = ['Konuşma', 'Dinleme', 'Okuma', 'Yazma', 'Kelime Bilgisi', 'Dil Bilgisi', 'Diğer'];
+const DEFAULT_TEACHER_AVATAR = '/tubasprofile.png';
 
 function progressToAchievementStatus(progress: number): Achievement['status'] {
   if (progress <= 0) return 'Henüz başlamadık';
@@ -159,7 +160,6 @@ type StudentProfileSync = Partial<Omit<Student, 'birthDate'>> & {
 };
 
 export function AdminDashboard() {
-  const auth = useAuth();
   const { user } = useUser();
   const firestore = useFirestore();
   const restorationStarted = useRef(false);
@@ -219,6 +219,7 @@ export function AdminDashboard() {
     { name: 'Mesajlar', icon: MessageSquare },
     { name: 'Ayarlar', icon: Settings },
   ];
+
 
   // Fetch real students from Firestore
   const studentsCollectionRef = useMemoFirebase(() => {
@@ -694,10 +695,18 @@ export function AdminDashboard() {
     });
   }, [calendarMonth, visibleLessonLogs]);
 
-  const upcomingLessons = useMemo(() => visibleLessonLogs
-    .filter((lesson) => lesson.status !== 'cancelled' && lesson.status !== 'completed' && lesson.date.getTime() > currentTime)
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .slice(0, 8), [currentTime, visibleLessonLogs]);
+  const upcomingLessons = useMemo(() => {
+    const sevenDaysFromNow = currentTime + (7 * 24 * 60 * 60 * 1000);
+    return visibleLessonLogs
+      .filter((lesson) => (
+        lesson.status !== 'cancelled'
+        && lesson.status !== 'completed'
+        && lesson.date.getTime() > currentTime
+        && lesson.date.getTime() <= sevenDaysFromNow
+      ))
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .slice(0, 8);
+  }, [currentTime, visibleLessonLogs]);
 
   const allHomeworks = useMemo(() => allStudents.flatMap((student) => (
     (student.homeworks || []).map((homework) => ({ ...homework, student }))
@@ -1224,51 +1233,7 @@ export function AdminDashboard() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col overflow-x-hidden bg-[#fcfbf9] font-sans text-slate-800 xl:h-[calc(100vh-4rem)] xl:flex-row xl:overflow-hidden">
-      
-      {/* 1. SIDEBAR */}
-      <aside className="flex w-full shrink-0 items-center gap-3 border-b border-[#eef3f0] bg-white px-3 py-3 xl:h-full xl:w-64 xl:flex-col xl:items-stretch xl:justify-between xl:overflow-y-auto xl:border-b-0 xl:border-r xl:py-4">
-        <div className="flex min-w-0 flex-1 items-center gap-3 xl:block xl:flex-none">
-          <div className="hidden px-2 xl:mb-6 xl:block">
-            <h1 className="text-xl font-bold text-[#2d4a3e] flex items-center gap-2">
-              Kelimeyle <br/> Daha Fazlası
-              <span className="text-lg">🌿</span>
-            </h1>
-            <p className="text-[10px] text-slate-500 mt-1">Türkçe, daha geniş bir dünya</p>
-          </div>
-
-          <nav className="touch-scroll flex min-w-0 flex-1 gap-1 overflow-x-auto pb-1 xl:block xl:space-y-1 xl:overflow-visible xl:pb-0">
-            {menuItems.map((item) => (
-              <button
-                key={item.name}
-                onClick={() => setActiveTab(item.name)}
-                className={`flex shrink-0 items-center justify-between gap-2 rounded-xl px-3 py-2 transition-colors xl:w-full ${
-                  activeTab === item.name 
-                    ? 'bg-[#eef3f0] text-[#2d4a3e] font-semibold' 
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <item.icon className={`h-4 w-4 ${activeTab === item.name ? 'text-[#6b8e7c]' : 'text-slate-400'}`} />
-                  <span className="text-sm">{item.name}</span>
-                </div>
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="hidden px-2 xl:mt-4 xl:block">
-          <div className="bg-[#fff9eb] p-3 rounded-2xl relative">
-            <p className="text-xs text-slate-700 italic">
-              "İyi bir öğretmen, daha iyi hikâyelere yol açar." 💛
-            </p>
-          </div>
-          <button onClick={() => auth.signOut()} className="flex items-center gap-2 mt-4 text-slate-400 hover:text-red-500 transition-colors text-sm px-2 pb-2">
-            <LogOut className="h-4 w-4" /> Çıkış Yap
-          </button>
-        </div>
-      </aside>
-
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col overflow-x-hidden bg-[#fcfbf9] font-sans text-slate-800 xl:h-[calc(100vh-4rem)] xl:overflow-hidden">
       {/* MAIN CONTENT AREA */}
       <div className="flex min-w-0 flex-1 flex-col xl:overflow-hidden">
         
@@ -1354,13 +1319,35 @@ export function AdminDashboard() {
                 <p className="text-sm font-bold text-[#2d4a3e]">Tuba</p>
                 <p className="text-xs text-slate-500">Türkçe Öğretmeni</p>
               </div>
-              <Avatar className="h-10 w-10 border-2 border-[#eef3f0]">
-                <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tuba" />
-                <AvatarFallback>T</AvatarFallback>
-              </Avatar>
+              <div className="rounded-full bg-gradient-to-br from-[#b7ddd7] via-white to-[#f2c7b5] p-[3px] shadow-sm" title="Tuba Öğretmen">
+                <Avatar className="h-12 w-12 border-2 border-white bg-white">
+                  <AvatarImage
+                    src={DEFAULT_TEACHER_AVATAR}
+                    className="object-cover object-[62%_42%]"
+                  />
+                  <AvatarFallback>T</AvatarFallback>
+                </Avatar>
+              </div>
             </div>
           </div>
         </header>
+
+        <nav className="touch-scroll flex shrink-0 gap-1 overflow-x-auto border-b border-[#eef3f0] bg-white px-3 py-2 sm:px-6 xl:px-8">
+          {menuItems.map((item) => (
+            <button
+              key={item.name}
+              onClick={() => setActiveTab(item.name)}
+              className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
+                activeTab === item.name
+                  ? 'bg-[#eef3f0] font-semibold text-[#2d4a3e]'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-[#2d4a3e]'
+              }`}
+            >
+              <item.icon className={`h-4 w-4 ${activeTab === item.name ? 'text-[#6b8e7c]' : 'text-slate-400'}`} />
+              <span>{item.name}</span>
+            </button>
+          ))}
+        </nav>
 
         {/* Conditional Content based on activeTab */}
         {activeTab === 'Ana Sayfa' ? (
@@ -1650,10 +1637,10 @@ export function AdminDashboard() {
               </div>
 
              {/* Strengths & Weaknesses */}
-             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:mt-6 xl:gap-6">
-               <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#eef3f0] relative overflow-hidden">
+             <div className="mt-5 grid min-w-0 grid-cols-1 gap-4 xl:mt-6 xl:grid-cols-2 xl:gap-6">
+               <div className="relative min-w-0 overflow-hidden rounded-3xl border border-[#eef3f0] bg-white p-4 shadow-sm sm:p-6">
                  <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl">⭐</div>
-                 <h3 className="font-bold text-[#e89b7b] text-lg mb-4 flex items-center gap-2">⭐ Güçlü Yönleri</h3>
+                 <h3 className="mb-4 flex items-center gap-2 text-base font-bold text-[#e89b7b] sm:text-lg">⭐ Güçlü Yönleri</h3>
                  <ul className="space-y-2 text-sm text-slate-600 font-medium">
                    {(selectedStudent.strengths?.length ? selectedStudent.strengths : ['Henüz güçlü yön eklenmedi']).map((strength) => (
                      <li key={strength} className="flex items-center gap-2"><div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#e89b7b]"/> {strength}</li>
@@ -1663,9 +1650,9 @@ export function AdminDashboard() {
                    {latestCheckIn?.note || 'Yaratıcı yazılarda harika işler çıkarıyor! ♡'}
                  </div>
                </div>
-               <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#eef3f0] relative overflow-hidden">
+               <div className="relative min-w-0 overflow-hidden rounded-3xl border border-[#eef3f0] bg-white p-4 shadow-sm sm:p-6">
                  <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl">📈</div>
-                 <h3 className="font-bold text-[#b098c4] text-lg mb-4 flex items-center gap-2">📈 Güçlendirdiğimiz Alanlar</h3>
+                 <h3 className="mb-4 flex items-start gap-2 text-base font-bold leading-snug text-[#b098c4] sm:items-center sm:text-lg">📈 Güçlendirdiğimiz Alanlar</h3>
                  <ul className="space-y-2 text-sm text-slate-600 font-medium">
                    {(selectedStudent.areasToImprove?.length ? selectedStudent.areasToImprove : ['Henüz gelişim alanı eklenmedi']).map((area) => (
                      <li key={area} className="flex items-center gap-2"><div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#b098c4]"/> {area}</li>
@@ -1677,7 +1664,7 @@ export function AdminDashboard() {
                </div>
                <Dialog open={isDevelopmentOpen} onOpenChange={setIsDevelopmentOpen}>
                  <DialogTrigger asChild>
-                   <Button variant="outline" className="col-span-2 justify-self-end rounded-xl border-[#dbe7df] text-[#2d4a3e]"><Pencil className="mr-2 h-4 w-4" /> Güçlü yönleri ve alanları düzenle</Button>
+                   <Button variant="outline" className="w-full min-w-0 justify-self-stretch whitespace-normal rounded-xl border-[#dbe7df] px-3 text-center text-[#2d4a3e] sm:w-auto sm:justify-self-end xl:col-span-2"><Pencil className="mr-2 h-4 w-4 shrink-0" /> Güçlü yönleri ve alanları düzenle</Button>
                  </DialogTrigger>
                  <DialogContent className="sm:max-w-xl rounded-3xl">
                    <DialogHeader><DialogTitle className="text-[#2d4a3e]">{selectedStudent.name} için gelişim özeti</DialogTitle></DialogHeader>
@@ -1965,7 +1952,7 @@ export function AdminDashboard() {
             {/* Calendar */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-[#2d4a3e] flex items-center gap-2"><CalendarIcon className="h-4 w-4"/> Yaklaşan Tüm Dersler</h3>
+                <h3 className="font-bold text-[#2d4a3e] flex items-center gap-2"><CalendarIcon className="h-4 w-4"/> Önümüzdeki 7 Gün</h3>
                 <button onClick={() => setActiveTab('Ders Takvimi')} className="text-xs text-slate-400 hover:text-[#6b8e7c]">Tümünü Gör →</button>
               </div>
               
@@ -1984,7 +1971,7 @@ export function AdminDashboard() {
                     </button>
                   );
                 })}
-                {!upcomingLessons.length && <div className="rounded-xl border border-dashed border-[#dbe7df] p-4 text-center"><p className="text-xs font-semibold text-[#2d4a3e]">Yaklaşan ders yok</p><p className="mt-1 text-[10px] text-slate-400">Planlanan tüm dersler burada görünecek.</p></div>}
+                {!upcomingLessons.length && <div className="rounded-xl border border-dashed border-[#dbe7df] p-4 text-center"><p className="text-xs font-semibold text-[#2d4a3e]">Bu hafta yaklaşan ders yok</p><p className="mt-1 text-[10px] text-slate-400">Daha ileri tarihler için takvime bakabilirsin.</p></div>}
               </div>
             </div>
 
