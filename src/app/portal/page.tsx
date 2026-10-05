@@ -5,7 +5,7 @@ import { useAuth, useUser } from '@/firebase';
 import { Loader2, User, Key, BookOpen, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AdminDashboard } from '@/components/portal/admin-dashboard';
 import { StudentDashboard } from '@/components/portal/student-dashboard';
@@ -16,6 +16,10 @@ export default function PortalPage() {
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const pathname = usePathname();
+  const studentSlug = pathname.startsWith('/portal/')
+    ? decodeURIComponent(pathname.slice('/portal/'.length).split('/')[0] || '')
+    : '';
   const [studentToken, setStudentToken] = useState<string | null>(null);
   const [isCheckingToken, setIsCheckingToken] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -48,7 +52,7 @@ export default function PortalPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${idToken}`,
         },
-        body: JSON.stringify({ pin: pinCode }),
+        body: JSON.stringify({ pin: pinCode, slug: studentSlug || undefined }),
       });
       const result = await response.json() as { studentToken?: string; error?: string };
 

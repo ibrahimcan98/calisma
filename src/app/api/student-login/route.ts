@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
+import { createStudentPortalSlug } from '@/lib/student-portal-slug';
 
 export const runtime = 'nodejs';
 
@@ -57,24 +58,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Çok fazla yanlış PIN denemesi yapıldı. Lütfen biraz bekleyin.' }, { status: 429 });
     }
 
-    const body = await request.json().catch(() => null) as { pin?: unknown } | null;
+    const body = await request.json().catch(() => null) as { pin?: unknown; slug?: unknown } | null;
     const pin = typeof body?.pin === 'string' ? body.pin.trim() : '';
+    const slug = typeof body?.slug === 'string' ? createStudentPortalSlug(body.slug) : '';
     if (!/^\d{4}$/.test(pin)) {
       recordFailedAttempt(key);
       return NextResponse.json({ error: 'PIN geçersiz.' }, { status: 400 });
     }
 
-    let snapshot = await adminDb.collectionGroup('students').where('pin', '==', pin).limit(1).get();
-    if (snapshot.empty) {
-      snapshot = await adminDb.collectionGroup('students').where('pin', '==', Number(pin)).limit(1).get();
+    let studentDocument;
+    if (slug) {
+      const studentsSnapshot = await adminDb.collectionGroup('students').get();
+      studentDocument = studentsSnapshot.docs.find((document) => {
+        const data = document.data();
+        const storedPin = String(data.pin ?? '').trim();
+        return createStudentPortalSlug(String(data.name || '')) === slug && storedPin === pin;
+      });
+    } else {
+      let snapshot = await adminDb.collectionGroup('students').where('pin', '==', pin).limit(1).get();
+      if (snapshot.empty) {
+        snapshot = await adminDb.collectionGroup('students').where('pin', '==', Number(pin)).limit(1).get();
+      }
+      studentDocument = snapshot.docs[0];
     }
 
-    if (snapshot.empty) {
+    if (!studentDocument) {
       recordFailedAttempt(key);
       return NextResponse.json({ error: 'PIN geçersiz.' }, { status: 401 });
     }
 
-    const studentDocument = snapshot.docs[0];
     const teacherId = studentDocument.ref.parent.parent?.id;
     if (!teacherId) {
       return NextResponse.json({ error: 'PIN geçersiz.' }, { status: 401 });

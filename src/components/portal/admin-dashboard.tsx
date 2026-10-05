@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Home, CalendarDays, BookOpen, FileText, MessageSquare, 
   StickyNote, BarChart2, Settings, Search, Plus, Calendar as CalendarIcon,
-  Send, MoreHorizontal, ChevronRight, ChevronLeft, Trash2, Pencil, Sparkles, Check
+  Send, MoreHorizontal, ChevronRight, ChevronLeft, Trash2, Pencil, Sparkles, Check, Link2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { toast } from '@/hooks/use-toast';
 import { addDaysToDateInput, defaultTimeZoneForCountry, STUDENT_TIME_ZONES, TEACHER_TIME_ZONE, timeZoneLabel, zonedDateTimeToUtc } from '@/lib/time-zones';
+import { createStudentPortalSlug } from '@/lib/student-portal-slug';
 
 const monthFormatter = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' });
 const lessonDateFormatter = new Intl.DateTimeFormat('tr-TR', { timeZone: TEACHER_TIME_ZONE, day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
@@ -747,6 +748,15 @@ export function AdminDashboard() {
     }
   };
 
+  const handleCopyStudentPortalLink = async () => {
+    if (!selectedStudent) return;
+    const slug = createStudentPortalSlug(selectedStudent.name);
+    if (!slug) return;
+    const url = `${window.location.origin}/portal/${slug}`;
+    await navigator.clipboard.writeText(url);
+    toast({ title: 'Öğrenci bağlantısı kopyalandı', description: url });
+  };
+
   const handleSendTeacherMessage = async () => {
     if (!user || !selectedStudent || !teacherMessage.trim()) return;
     const content = teacherMessage.trim();
@@ -1417,6 +1427,15 @@ export function AdminDashboard() {
              {/* Profile Header */}
              <div className="relative rounded-2xl border border-[#eef3f0] bg-white p-4 shadow-sm sm:p-6 sm:rounded-3xl">
                 <div className="mb-4 flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleCopyStudentPortalLink()}
+                    className="rounded-xl border-[#dbe7df] font-medium text-[#527363]"
+                  >
+                    <Link2 className="mr-1.5 h-4 w-4" /> Özel Linki Kopyala
+                  </Button>
                   <Dialog
                     open={isDialogOpen}
                     onOpenChange={(open) => {
