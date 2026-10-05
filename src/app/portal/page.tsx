@@ -76,10 +76,19 @@ export default function PortalPage() {
         return;
       }
 
-      const q = user
-        ? query(collection(firestore, 'users', user.uid, 'students'), where('pin', '==', pinCode))
-        : query(collectionGroup(firestore, 'students'), where('pin', '==', pinCode));
-      const snap = await getDocs(q);
+      // Anonymous student sessions must always search the shared student collection.
+      // Only the real teacher account may use its own nested students collection.
+      const isTeacherAccount = user?.email === 'tubakodak8@gmail.com';
+      const studentQuery = (pin: string | number) => isTeacherAccount
+        ? query(collection(firestore, 'users', user.uid, 'students'), where('pin', '==', pin))
+        : query(collectionGroup(firestore, 'students'), where('pin', '==', pin));
+
+      let snap = await getDocs(studentQuery(pinCode));
+
+      // Some older student records stored the PIN as a number rather than text.
+      if (snap.empty && /^\d{4}$/.test(pinCode)) {
+        snap = await getDocs(studentQuery(Number(pinCode)));
+      }
       
       if (!snap.empty) {
         const studentDoc = snap.docs[0];
