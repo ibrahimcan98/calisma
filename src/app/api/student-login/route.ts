@@ -25,21 +25,21 @@ function clientKey(request: Request) {
 function isRateLimited(key: string) {
   const now = Date.now();
   const current = attempts.get(key);
+  if (!current || current.resetAt <= now) return false;
+  return current.count >= MAX_ATTEMPTS;
+}
+
+function recordFailedAttempt(key: string) {
+  const now = Date.now();
+  const current = attempts.get(key);
   if (!current || current.resetAt <= now) {
     attempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return false;
+    return;
   }
-  current.count += 1;
-  attempts.set(key, current);
-  return current.count > MAX_ATTEMPTS;
+  attempts.set(key, { ...current, count: current.count + 1 });
 }
 
 export async function POST(request: Request) {
-  const key = clientKey(request);
-  if (isRateLimited(key)) {
-    return NextResponse.json({ error: 'Çok fazla deneme yapıldı. Lütfen biraz bekleyin.' }, { status: 429 });
-  }
-
   try {
     const authorization = request.headers.get('authorization') || '';
     const idToken = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
@@ -52,9 +52,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Oturum doğrulanamadı.' }, { status: 401 });
     }
 
+    const key = `${clientKey(request)}:${decodedToken.uid}`;
+    if (isRateLimited(key)) {
+      return NextResponse.json({ error: 'Çok fazla yanlış PIN denemesi yapıldı. Lütfen biraz bekleyin.' }, { status: 429 });
+    }
+
     const body = await request.json().catch(() => null) as { pin?: unknown } | null;
     const pin = typeof body?.pin === 'string' ? body.pin.trim() : '';
     if (!/^\d{4}$/.test(pin)) {
+      recordFailedAttempt(key);
       return NextResponse.json({ error: 'PIN geçersiz.' }, { status: 400 });
     }
 
@@ -64,6 +70,7 @@ export async function POST(request: Request) {
     }
 
     if (snapshot.empty) {
+      recordFailedAttempt(key);
       return NextResponse.json({ error: 'PIN geçersiz.' }, { status: 401 });
     }
 
@@ -80,6 +87,7 @@ export async function POST(request: Request) {
       createdAt: Timestamp.now(),
       expiresAt: Timestamp.fromMillis(Date.now() + (24 * 60 * 60 * 1000)),
     });
+    attempts.delete(key);
 
     return NextResponse.json({
       studentToken: `student:${teacherId}:${studentId}`,

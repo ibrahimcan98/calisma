@@ -57,6 +57,10 @@ export default function PortalPage() {
           alert('Geçersiz PIN Kodu. Lütfen Tuba öğretmeninize danışın.');
           return;
         }
+        if (response.status === 429) {
+          alert(result.error || 'Çok fazla deneme yapıldı. Lütfen biraz bekleyin.');
+          return;
+        }
         throw new Error(result.error || 'Öğrenci girişi tamamlanamadı.');
       }
 
