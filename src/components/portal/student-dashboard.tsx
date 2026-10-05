@@ -52,6 +52,9 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
+    let waitingForRealtimeStudent = false;
+    setLoading(true);
+    setStudent(null);
     const fetchStudent = async () => {
       try {
         if (studentId.startsWith('local:')) {
@@ -96,8 +99,12 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
                 ).catch((error) => console.warn('Yerel profil senkron belgesine taşınamadı.', error));
               }
 
+              waitingForRealtimeStudent = true;
               unsubscribe = onSnapshot(studentRef, (snap) => {
-                if (!snap.exists()) return;
+                if (!snap.exists()) {
+                  setLoading(false);
+                  return;
+                }
                 setStudent(normalizeStudent(snap.data() as Student, snap.id, teacherId));
                 setLoading(false);
               }, (error) => {
@@ -124,8 +131,12 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
         } else if (studentId.startsWith('student:')) {
           const [, teacherId, realStudentId] = studentId.split(':');
           const studentRef = firestoreDoc(firestore, 'users', teacherId, 'students', realStudentId);
+          waitingForRealtimeStudent = true;
           unsubscribe = onSnapshot(studentRef, (snap) => {
-            if (!snap.exists()) return;
+            if (!snap.exists()) {
+              setLoading(false);
+              return;
+            }
             const data = snap.data() as Student;
             setStudent(normalizeStudent(data, snap.id, teacherId));
             setLoading(false);
@@ -146,7 +157,7 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
       } catch (e) {
         console.error(e);
       } finally {
-        setLoading(false);
+        if (!waitingForRealtimeStudent) setLoading(false);
       }
     };
     void fetchStudent();
