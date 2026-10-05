@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
 export const runtime = 'nodejs';
 
@@ -40,6 +41,17 @@ export async function POST(request: Request) {
   }
 
   try {
+    const authorization = request.headers.get('authorization') || '';
+    const idToken = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+    if (!idToken) {
+      return NextResponse.json({ error: 'Oturum doğrulanamadı.' }, { status: 401 });
+    }
+
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    if (decodedToken.firebase?.sign_in_provider !== 'anonymous') {
+      return NextResponse.json({ error: 'Oturum doğrulanamadı.' }, { status: 401 });
+    }
+
     const body = await request.json().catch(() => null) as { pin?: unknown } | null;
     const pin = typeof body?.pin === 'string' ? body.pin.trim() : '';
     if (!/^\d{4}$/.test(pin)) {
@@ -62,14 +74,14 @@ export async function POST(request: Request) {
     }
 
     const studentId = studentDocument.id;
-    const customToken = await adminAuth.createCustomToken(`student_${teacherId}_${studentId}`, {
-      role: 'student',
+    await adminDb.doc(`studentSessions/${decodedToken.uid}`).set({
       teacherId,
       studentId,
+      createdAt: Timestamp.now(),
+      expiresAt: Timestamp.fromMillis(Date.now() + (24 * 60 * 60 * 1000)),
     });
 
     return NextResponse.json({
-      customToken,
       studentToken: `student:${teacherId}:${studentId}`,
     });
   } catch (error) {

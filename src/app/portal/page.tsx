@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AdminDashboard } from '@/components/portal/admin-dashboard';
 import { StudentDashboard } from '@/components/portal/student-dashboard';
 import { Header } from '@/components/header';
-import { signInWithCustomToken } from 'firebase/auth';
+import { signInAnonymously } from 'firebase/auth';
 
 export default function PortalPage() {
   const auth = useAuth();
@@ -38,14 +38,21 @@ export default function PortalPage() {
     setIsLoggingIn(true);
     
     try {
+      const anonymousUser = auth.currentUser?.isAnonymous
+        ? auth.currentUser
+        : (await signInAnonymously(auth)).user;
+      const idToken = await anonymousUser.getIdToken(true);
       const response = await fetch('/api/student-login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify({ pin: pinCode }),
       });
-      const result = await response.json() as { customToken?: string; studentToken?: string; error?: string };
+      const result = await response.json() as { studentToken?: string; error?: string };
 
-      if (!response.ok || !result.customToken || !result.studentToken) {
+      if (!response.ok || !result.studentToken) {
         if (response.status === 400 || response.status === 401) {
           alert('Geçersiz PIN Kodu. Lütfen Tuba öğretmeninize danışın.');
           return;
@@ -53,7 +60,6 @@ export default function PortalPage() {
         throw new Error(result.error || 'Öğrenci girişi tamamlanamadı.');
       }
 
-      await signInWithCustomToken(auth, result.customToken);
       localStorage.setItem('student_portal_token', result.studentToken);
       setStudentToken(result.studentToken);
     } catch (error) {

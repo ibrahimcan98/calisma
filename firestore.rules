@@ -20,15 +20,17 @@ service cloud.firestore {
 
     function isStudent(userId, studentId) {
       return isSignedIn()
-        && request.auth.token.role == 'student'
-        && request.auth.token.teacherId == userId
-        && request.auth.token.studentId == studentId;
+        && exists(/databases/$(database)/documents/studentSessions/$(request.auth.uid))
+        && get(/databases/$(database)/documents/studentSessions/$(request.auth.uid)).data.teacherId == userId
+        && get(/databases/$(database)/documents/studentSessions/$(request.auth.uid)).data.studentId == studentId
+        && get(/databases/$(database)/documents/studentSessions/$(request.auth.uid)).data.expiresAt > request.time;
     }
 
     function isStudentOfTeacher(userId) {
       return isSignedIn()
-        && request.auth.token.role == 'student'
-        && request.auth.token.teacherId == userId;
+        && exists(/databases/$(database)/documents/studentSessions/$(request.auth.uid))
+        && get(/databases/$(database)/documents/studentSessions/$(request.auth.uid)).data.teacherId == userId
+        && get(/databases/$(database)/documents/studentSessions/$(request.auth.uid)).data.expiresAt > request.time;
     }
 
     match /users/{userId} {
@@ -134,7 +136,8 @@ service cloud.firestore {
 
       match /lessonLogs/{logId} {
         allow get, list: if isOwner(userId) || (
-          isStudentOfTeacher(userId) && resource.data.studentId == request.auth.token.studentId
+          isStudentOfTeacher(userId)
+          && resource.data.studentId == get(/databases/$(database)/documents/studentSessions/$(request.auth.uid)).data.studentId
         );
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
         allow update: if isExistingOwner(userId);
@@ -166,6 +169,11 @@ service cloud.firestore {
         allow create: if isOwner(userId) && request.resource.data.creatorUserId == userId;
         allow update, delete: if isExistingOwner(userId);
       }
+    }
+
+    match /studentSessions/{sessionId} {
+      allow get: if isSignedIn() && request.auth.uid == sessionId;
+      allow list, create, update, delete: if false;
     }
 
     match /{document=**} {
