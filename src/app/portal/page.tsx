@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth, useUser, useFirestore } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { Loader2, User, Key, BookOpen, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,35 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AdminDashboard } from '@/components/portal/admin-dashboard';
 import { StudentDashboard } from '@/components/portal/student-dashboard';
 import { Header } from '@/components/header';
-import { collection, collectionGroup, query, where, getDocs } from 'firebase/firestore';
-import { signInAnonymously } from 'firebase/auth';
-
-function getCachedStudentToken(pin: string) {
-  try {
-    const rawCache = localStorage.getItem('student_portal_pin_cache');
-    if (!rawCache) return null;
-    const cache = JSON.parse(rawCache) as Record<string, string>;
-    return cache[pin] || null;
-  } catch {
-    return null;
-  }
-}
-
-function getCachedLocalStudentToken(pin: string) {
-  try {
-    const rawCache = localStorage.getItem('student_portal_students_cache');
-    if (!rawCache) return null;
-    const students = JSON.parse(rawCache) as Array<{ pin?: string }>;
-    return students.some((student) => student.pin === pin) ? `local:${pin}` : null;
-  } catch {
-    return null;
-  }
-}
+import { signInWithCustomToken } from 'firebase/auth';
 
 export default function PortalPage() {
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
   const router = useRouter();
   const [studentToken, setStudentToken] = useState<string | null>(null);
   const [isCheckingToken, setIsCheckingToken] = useState(true);
@@ -47,11 +23,6 @@ export default function PortalPage() {
   // Login states for student
   const [isStudentLogin, setIsStudentLogin] = useState(false);
   const [pinCode, setPinCode] = useState('');
-
-  const ensureStudentFirebaseSession = async () => {
-    if (auth.currentUser) return;
-    await signInAnonymously(auth);
-  };
 
   useEffect(() => {
     // Check if student is logged in via local storage
@@ -67,50 +38,27 @@ export default function PortalPage() {
     setIsLoggingIn(true);
     
     try {
-      await ensureStudentFirebaseSession();
-      const cachedToken = getCachedStudentToken(pinCode) || getCachedLocalStudentToken(pinCode);
-      if (cachedToken) {
-        localStorage.setItem('student_portal_token', cachedToken);
-        setStudentToken(cachedToken);
-        setIsLoggingIn(false);
-        return;
+      const response = await fetch('/api/student-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: pinCode }),
+      });
+      const result = await response.json() as { customToken?: string; studentToken?: string; error?: string };
+
+      if (!response.ok || !result.customToken || !result.studentToken) {
+        if (response.status === 400 || response.status === 401) {
+          alert('Geçersiz PIN Kodu. Lütfen Tuba öğretmeninize danışın.');
+          return;
+        }
+        throw new Error(result.error || 'Öğrenci girişi tamamlanamadı.');
       }
 
-      // Anonymous student sessions must always search the shared student collection.
-      // Only the real teacher account may use its own nested students collection.
-      const isTeacherAccount = user?.email === 'tubakodak8@gmail.com';
-      const studentQuery = (pin: string | number) => isTeacherAccount
-        ? query(collection(firestore, 'users', user.uid, 'students'), where('pin', '==', pin))
-        : query(collectionGroup(firestore, 'students'), where('pin', '==', pin));
-
-      let snap = await getDocs(studentQuery(pinCode));
-
-      // Some older student records stored the PIN as a number rather than text.
-      if (snap.empty && /^\d{4}$/.test(pinCode)) {
-        snap = await getDocs(studentQuery(Number(pinCode)));
-      }
-      
-      if (!snap.empty) {
-        const studentDoc = snap.docs[0];
-        const teacherId = user?.uid || studentDoc.ref.parent.parent?.id;
-        const token = teacherId ? `student:${teacherId}:${studentDoc.id}` : pinCode;
-        localStorage.setItem('student_portal_token', token);
-        setStudentToken(token);
-      } else {
-        alert('Geçersiz PIN Kodu. Lütfen Tuba öğretmeninize danışın.');
-      }
-    } catch (error: any) {
+      await signInWithCustomToken(auth, result.customToken);
+      localStorage.setItem('student_portal_token', result.studentToken);
+      setStudentToken(result.studentToken);
+    } catch (error) {
       console.error("Error logging in:", error);
-
-      const cachedToken = getCachedStudentToken(pinCode) || getCachedLocalStudentToken(pinCode);
-      if (cachedToken) {
-        await ensureStudentFirebaseSession();
-        localStorage.setItem('student_portal_token', cachedToken);
-        setStudentToken(cachedToken);
-        return;
-      }
-      
-      alert('Bu PIN henüz bu tarayıcıda öğrenci girişi için hazırlanmadı. Öğretmen paneline girip öğrencinin PIN bilgisini bir kez kaydedin, sonra çıkış yapıp aynı PIN ile öğrenci girişi yapın.');
+      alert('Öğrenci girişi şu anda tamamlanamadı. Lütfen kısa bir süre sonra tekrar deneyin.');
     } finally {
       setIsLoggingIn(false);
     }

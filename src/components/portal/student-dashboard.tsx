@@ -174,8 +174,11 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
     : null;
   const lessonLogsRef = useMemoFirebase(() => {
     if (!studentRoot || studentRoot.userId === 'dummy') return null;
-    return collection(firestore, 'users', studentRoot.userId, 'lessonLogs');
-  }, [firestore, studentRoot?.userId]);
+    return query(
+      collection(firestore, 'users', studentRoot.userId, 'lessonLogs'),
+      where('studentId', '==', studentRoot.studentId),
+    );
+  }, [firestore, studentRoot?.userId, studentRoot?.studentId]);
   const { data: rawLessonLogs } = useCollection<Omit<LessonLog, 'id'>>(lessonLogsRef);
   const lessons = useMemo(() => (rawLessonLogs || [])
     .filter((lesson) => lesson.studentId === studentRoot?.studentId && lesson.status !== 'cancelled')

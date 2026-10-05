@@ -18,6 +18,19 @@ service cloud.firestore {
       return resource != null && isOwner(userId);
     }
 
+    function isStudent(userId, studentId) {
+      return isSignedIn()
+        && request.auth.token.role == 'student'
+        && request.auth.token.teacherId == userId
+        && request.auth.token.studentId == studentId;
+    }
+
+    function isStudentOfTeacher(userId) {
+      return isSignedIn()
+        && request.auth.token.role == 'student'
+        && request.auth.token.teacherId == userId;
+    }
+
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
@@ -61,11 +74,12 @@ service cloud.firestore {
       }
 
       match /students/{studentId} {
-        allow get, list: if isSignedIn();
+        allow get: if isOwner(userId) || isStudent(userId, studentId);
+        allow list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
         allow update: if (isExistingOwner(userId) && request.resource.data.userId == resource.data.userId) || (
           // Öğrenci portalından profil ve avatar güncellemesine izin ver
-          isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          isStudent(userId, studentId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'avatar', 'country', 'birthDate', 'languages', 'interests',
             'favoriteThings', 'hasPet', 'petName', 'backgroundTheme', 'themeColor',
             'preferredName', 'improvementGoal', 'noteForTuba', 'nextLessonRequest',
@@ -76,50 +90,52 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
 
         match /balanceLogs/{logId} {
-          allow get, list: if isSignedIn();
+          allow get, list: if isOwner(userId) || isStudent(userId, studentId);
           allow create: if isOwner(userId);
           allow delete: if isOwner(userId);
         }
         
         match /messages/{messageId} {
-          allow get, list: if isSignedIn();
+          allow get, list: if isOwner(userId) || isStudent(userId, studentId);
           allow create: if isOwner(userId) || (
-            isSignedIn() &&
+            isStudent(userId, studentId) &&
             request.resource.data.studentId == studentId &&
             request.resource.data.senderRole == 'student'
           );
           allow update: if isOwner(userId) || (
-            isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['emojiReaction', 'isRead'])
+            isStudent(userId, studentId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['emojiReaction', 'isRead'])
           );
           allow delete: if isOwner(userId);
         }
         
         match /checkIns/{checkInId} {
-          allow get, list: if isSignedIn();
+          allow get, list: if isOwner(userId) || isStudent(userId, studentId);
           allow create, update: if isOwner(userId) || (
-            isSignedIn() && request.resource.data.studentId == studentId
+            isStudent(userId, studentId) && request.resource.data.studentId == studentId
           );
           allow delete: if isOwner(userId);
         }
         
         match /achievements/{achvId} {
-          allow get, list: if isSignedIn();
+          allow get, list: if isOwner(userId) || isStudent(userId, studentId);
           allow create, update, delete: if isOwner(userId);
         }
         
         match /vocabularies/{vocabId} {
-          allow get, list: if isSignedIn();
+          allow get, list: if isOwner(userId) || isStudent(userId, studentId);
           allow create, update, delete: if isOwner(userId);
         }
 
         match /vocabulary/{vocabId} {
-          allow get, list: if isSignedIn();
+          allow get, list: if isOwner(userId) || isStudent(userId, studentId);
           allow create, update, delete: if isOwner(userId);
         }
       }
 
       match /lessonLogs/{logId} {
-        allow get, list: if isSignedIn();
+        allow get, list: if isOwner(userId) || (
+          isStudentOfTeacher(userId) && resource.data.studentId == request.auth.token.studentId
+        );
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
         allow update: if isExistingOwner(userId);
         allow delete: if isExistingOwner(userId);
@@ -169,9 +185,5 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
-    // Allow collectionGroup query for students PIN login
-    match /{path=**}/students/{studentId} {
-      allow read: if isSignedIn();
-    }
   }
 }
