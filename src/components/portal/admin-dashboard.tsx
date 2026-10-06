@@ -165,6 +165,7 @@ export function AdminDashboard() {
   const firestore = useFirestore();
   const restorationStarted = useRef(false);
   const historicalRecoveryStarted = useRef(false);
+  const portalLessonMigrationStarted = useRef(false);
   
   const [activeTab, setActiveTab] = useState('Ana Sayfa');
   const [searchQuery, setSearchQuery] = useState('');
@@ -259,10 +260,34 @@ export function AdminDashboard() {
 
   const lessonLogsCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
-    return collection(firestore, 'users', user.uid, 'lessonLogs');
+    return collection(firestore, 'users', user.uid, 'portalLessons');
   }, [firestore, user]);
 
   const { data: rawLessonLogs } = useCollection<Omit<LessonLog, 'id'>>(lessonLogsCollectionRef);
+
+  useEffect(() => {
+    if (!user || portalLessonMigrationStarted.current) return;
+    portalLessonMigrationStarted.current = true;
+
+    const migrateExistingPortalLessons = async () => {
+      try {
+        const legacyRef = collection(firestore, 'users', user.uid, 'lessonLogs');
+        const portalRef = collection(firestore, 'users', user.uid, 'portalLessons');
+        const [legacySnapshot, portalSnapshot] = await Promise.all([getDocs(legacyRef), getDocs(portalRef)]);
+        const existingPortalIds = new Set(portalSnapshot.docs.map((document) => document.id));
+        const plannedLessons = legacySnapshot.docs.filter((document) => (
+          document.data().status === 'scheduled' && !existingPortalIds.has(document.id)
+        ));
+        await Promise.all(plannedLessons.map((document) => (
+          setDoc(doc(portalRef, document.id), document.data(), { merge: true })
+        )));
+      } catch (error) {
+        console.warn('Mevcut portal takvimi ayrı koleksiyona taşınamadı.', error);
+      }
+    };
+
+    void migrateExistingPortalLessons();
+  }, [firestore, user]);
 
   const lessonLogs = useMemo(() => (rawLessonLogs || []).map((lesson) => ({
     ...lesson,
@@ -1077,7 +1102,7 @@ export function AdminDashboard() {
 
   const handleDeleteLesson = async () => {
     if (!user || !lessonToDelete) return;
-    await deleteDoc(doc(firestore, 'users', user.uid, 'lessonLogs', lessonToDelete.id));
+    await deleteDoc(doc(firestore, 'users', user.uid, 'portalLessons', lessonToDelete.id));
     setLessonToDelete(null);
   };
 

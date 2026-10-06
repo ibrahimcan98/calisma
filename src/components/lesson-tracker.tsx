@@ -268,27 +268,14 @@ export function LessonTracker() {
     
     updateDocumentNonBlocking(studentRef, { balance: newBalance });
 
-    const now = new Date();
-    const matchingScheduledLesson = allLessonLogs
-      .filter((lesson) => lesson.studentId === student.id && lesson.status === 'scheduled')
-      .sort((a, b) => Math.abs(a.date.getTime() - now.getTime()) - Math.abs(b.date.getTime() - now.getTime()))
-      .find((lesson) => Math.abs(lesson.date.getTime() - now.getTime()) <= 18 * 60 * 60 * 1000);
-
-    if (matchingScheduledLesson) {
-      updateDocumentNonBlocking(
-        doc(firestore, 'users', user.uid, 'lessonLogs', matchingScheduledLesson.id),
-        { status: 'completed' }
-      );
-    } else {
-      addDocumentNonBlocking(lessonLogsCollectionRef, {
-          userId: user.uid,
-          studentId: student.id,
-          studentName: student.name,
-          date: now,
-          lessonPrice: student.lessonPrice,
-          status: 'completed',
-      });
-    }
+    addDocumentNonBlocking(lessonLogsCollectionRef, {
+        userId: user.uid,
+        studentId: student.id,
+        studentName: student.name,
+        date: new Date(),
+        lessonPrice: student.lessonPrice,
+        status: 'completed',
+    });
 
     const balanceLogsCollectionRef = collection(firestore, 'users', user.uid, 'students', student.id, 'balanceLogs');
     addDocumentNonBlocking(balanceLogsCollectionRef, {

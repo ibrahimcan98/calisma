@@ -186,7 +186,7 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
   const lessonLogsRef = useMemoFirebase(() => {
     if (!studentRoot || studentRoot.userId === 'dummy') return null;
     return query(
-      collection(firestore, 'users', studentRoot.userId, 'lessonLogs'),
+      collection(firestore, 'users', studentRoot.userId, 'portalLessons'),
       where('studentId', '==', studentRoot.studentId),
     );
   }, [firestore, studentRoot?.userId, studentRoot?.studentId]);

@@ -144,6 +144,14 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
 
+      match /portalLessons/{lessonId} {
+        allow get, list: if isOwner(userId) || (
+          isStudentOfTeacher(userId)
+          && resource.data.studentId == get(/databases/$(database)/documents/studentSessions/$(request.auth.uid)).data.studentId
+        );
+        allow create, update, delete: if isOwner(userId);
+      }
+
       // --- PLANLAMA MODÜLÜ KURALLARI ---
 
       match /events/{eventId} {
