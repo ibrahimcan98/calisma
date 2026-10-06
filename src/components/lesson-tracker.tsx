@@ -112,7 +112,7 @@ export function LessonTracker() {
 
       const publicPaymentRef = doc(firestore, 'publicPaymentLinks', token);
       const studentLogs = (rawLessonLogs || [])
-        .filter((log) => log.studentId === student.id)
+        .filter((log) => log.studentId === student.id && log.status !== 'scheduled' && log.status !== 'cancelled')
         .map((log) => ({ id: log.id, date: log.date, lessonPrice: log.lessonPrice }));
       const publicPaymentData = {
         ownerId: user.uid,
@@ -127,13 +127,18 @@ export function LessonTracker() {
     });
   }, [firestore, rawLessonLogs, rawStudents, user]);
   
-  const lessonLogs = useMemo(() => {
+  const allLessonLogs = useMemo(() => {
     if (!rawLessonLogs) return [];
     return rawLessonLogs.map(l => ({
       ...l,
       date: (l.date as any)?.toDate() ?? new Date(),
     })).sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [rawLessonLogs]);
+
+  const lessonLogs = useMemo(
+    () => allLessonLogs.filter((lesson) => lesson.status !== 'scheduled' && lesson.status !== 'cancelled'),
+    [allLessonLogs]
+  );
 
   const stats = useMemo(() => {
     if (!isMounted) return { totalEarnings: 0, logsByWeek: {}, sortedWeeks: [] };
@@ -263,13 +268,27 @@ export function LessonTracker() {
     
     updateDocumentNonBlocking(studentRef, { balance: newBalance });
 
-    addDocumentNonBlocking(lessonLogsCollectionRef, {
-        userId: user.uid,
-        studentId: student.id,
-        studentName: student.name,
-        date: new Date(),
-        lessonPrice: student.lessonPrice,
-    });
+    const now = new Date();
+    const matchingScheduledLesson = allLessonLogs
+      .filter((lesson) => lesson.studentId === student.id && lesson.status === 'scheduled')
+      .sort((a, b) => Math.abs(a.date.getTime() - now.getTime()) - Math.abs(b.date.getTime() - now.getTime()))
+      .find((lesson) => Math.abs(lesson.date.getTime() - now.getTime()) <= 18 * 60 * 60 * 1000);
+
+    if (matchingScheduledLesson) {
+      updateDocumentNonBlocking(
+        doc(firestore, 'users', user.uid, 'lessonLogs', matchingScheduledLesson.id),
+        { status: 'completed' }
+      );
+    } else {
+      addDocumentNonBlocking(lessonLogsCollectionRef, {
+          userId: user.uid,
+          studentId: student.id,
+          studentName: student.name,
+          date: now,
+          lessonPrice: student.lessonPrice,
+          status: 'completed',
+      });
+    }
 
     const balanceLogsCollectionRef = collection(firestore, 'users', user.uid, 'students', student.id, 'balanceLogs');
     addDocumentNonBlocking(balanceLogsCollectionRef, {

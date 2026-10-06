@@ -45,10 +45,13 @@ export function StudentDetailPage({ userId, studentId, isParentMode = false }: S
 
   const lessonLogs = useMemo(() => {
     if (!rawLessonLogs) return [];
-    return rawLessonLogs.map(l => ({
-      ...l,
-      date: (l.date as any)?.toDate() ?? new Date(),
-    })).sort((a, b) => b.date.getTime() - a.date.getTime());
+    return rawLessonLogs
+      .filter((lesson) => lesson.status !== 'scheduled' && lesson.status !== 'cancelled')
+      .map(l => ({
+        ...l,
+        date: (l.date as any)?.toDate() ?? new Date(),
+      }))
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [rawLessonLogs]);
 
   const stats = useMemo(() => {

@@ -195,7 +195,10 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
     .filter((lesson) => lesson.studentId === studentRoot?.studentId && lesson.status !== 'cancelled')
     .map((lesson) => ({ ...lesson, date: normalizeFirestoreDate(lesson.date) }))
     .sort((a, b) => a.date.getTime() - b.date.getTime()), [rawLessonLogs, studentRoot?.studentId]);
-  const nextLesson = useMemo(() => lessons.find((lesson) => lesson.date >= new Date()) || null, [lessons]);
+  const nextLesson = useMemo(
+    () => lessons.find((lesson) => lesson.status !== 'completed' && lesson.date >= new Date()) || null,
+    [lessons]
+  );
 
   if (loading) {
     return (
@@ -416,7 +419,7 @@ function normalizeFirestoreDate(value: LessonLog['date']) {
 
 function LessonHistory({ lessons, timeZone }: { lessons: LessonLog[]; timeZone: string }) {
   const now = new Date();
-  const upcoming = lessons.filter((lesson) => lesson.date >= now);
+  const upcoming = lessons.filter((lesson) => lesson.status !== 'completed' && lesson.date >= now);
   const past = lessons.filter((lesson) => lesson.date < now).reverse();
   const groups = [{ title: 'Yaklaşan dersler', lessons: upcoming }, { title: 'Geçmiş dersler', lessons: past }];
   return (

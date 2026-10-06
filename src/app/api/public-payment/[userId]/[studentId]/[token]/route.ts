@@ -20,6 +20,10 @@ export async function GET(_request: Request, context: RouteContext) {
     }
 
     const lessonLogs = lessonLogsSnapshot.docs
+      .filter((document) => {
+        const status = document.data().status;
+        return status !== 'scheduled' && status !== 'cancelled';
+      })
       .map((document) => {
         const data = document.data();
         const rawDate = data.date;
