@@ -40,7 +40,14 @@ export async function POST(req: Request) {
 
     const isPound = ['ata', 'mila'].includes(studentName.toLocaleLowerCase('tr-TR'));
     const currencyCode = isPound ? 'gbp' : 'eur';
-    const origin = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin;
+    const requestUrl = new URL(req.url);
+    const forwardedHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+    const forwardedProtocol = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https';
+    const forwardedOrigin = forwardedHost ? `${forwardedProtocol}://${forwardedHost}` : '';
+    const configuredOrigin = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '') || '';
+    const candidateOrigin = configuredOrigin || forwardedOrigin || requestUrl.origin;
+    const isInternalOrigin = /^https?:\/\/(?:0\.0\.0\.0|127\.0\.0\.1)(?::\d+)?$/i.test(candidateOrigin);
+    const origin = isInternalOrigin ? 'https://tubasclassroom.com' : candidateOrigin;
     const paymentPath = paymentSlug
       ? `/veli/${paymentSlug}`
       : `/pay/${resolvedUserId}/${studentId}/${accessToken}`;
